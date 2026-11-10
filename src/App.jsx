@@ -27,6 +27,14 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
+const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
+
+const isFieldVisible = (field, formData) => (
+  !field.skipLogic
+  || !field.skipLogic.fieldId
+  || String(formData[field.skipLogic.fieldId] ?? '') === String(field.skipLogic.value ?? '')
+);
+
 // Default Initial M&E Projects
 const initialProjects = [
   {
@@ -157,7 +165,7 @@ export default function App() {
     }
 
     const createdProject = {
-      id: `proj-${Date.now()}`,
+      id: createId('proj'),
       name: newProj.name,
       code: newProj.code,
       donor: newProj.donor || 'N/A',
@@ -262,15 +270,20 @@ export default function App() {
   };
 
   const exportToCSV = (filename, rows) => {
-    const processRow = row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(processRow).join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const processRow = row => row.map(val => {
+      const value = String(val ?? '');
+      const spreadsheetSafeValue = /^\s*[=+\-@]/.test(value) ? `'${value}` : value;
+      return `"${spreadsheetSafeValue.replace(/"/g, '""')}"`;
+    }).join(',');
+    const csvContent = `\uFEFF${rows.map(processRow).join('\r\n')}`;
+    const objectUrl = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', objectUrl);
     link.setAttribute('download', `${filename}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   };
 
   const exportSubmissionsCSV = () => {
@@ -278,11 +291,21 @@ export default function App() {
       alert('No submission data available to export.');
       return;
     }
-    const headers = ['Submission ID', 'Timestamp', 'Form ID', 'Field Data Recorded'];
+    const fields = currentProject.forms.flatMap(form => form.fields.map(field => ({
+      formId: form.id,
+      fieldId: field.id,
+      header: `${form.title} — ${field.label}`
+    })));
+    const headers = ['Submission ID', 'Timestamp', 'Form', ...fields.map(field => field.header)];
     const rows = [headers];
     currentProject.submissions.forEach(sub => {
-      const dataString = Object.entries(sub.data).map(([k, v]) => `${k}: ${v}`).join(' | ');
-      rows.push([sub.id, sub.timestamp, sub.formId, dataString]);
+      const form = currentProject.forms.find(item => item.id === sub.formId);
+      rows.push([
+        sub.id,
+        sub.timestamp,
+        form?.title || sub.formId,
+        ...fields.map(field => field.formId === sub.formId ? sub.data[field.fieldId] || '' : '')
+      ]);
     });
     exportToCSV(`${currentProject.code}_Submissions`, rows);
   };
@@ -300,7 +323,7 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projects, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `GMES_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
+    downloadAnchor.    setAttribute("download", `GMEL_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -308,7 +331,7 @@ export default function App() {
 
   const handleFormSubmit = (formId, formData) => {
     const newSubmission = {
-      id: `sub-${Date.now()}`,
+      id: createId('sub'),
       formId,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       data: formData
@@ -334,7 +357,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                G-MEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">System</span>
+                GMEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">SYSTEM</span>
               </h1>
             </div>
           </div>
@@ -387,7 +410,7 @@ export default function App() {
         </div>
 
         {/* Tab Navigation Menu */}
-        <div className="desktop-nav bg-slate-800 border-t border-slate-700 shadow-inner">
+        <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
@@ -424,7 +447,7 @@ export default function App() {
         {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
         {activeTab === 'builder' && <FormBuilderView project={currentProject} setProjects={setProjects} onRenameForm={handleRenameForm} onDeleteForm={handleDeleteForm} />}
         {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
-        {activeTab === 'export' && <ExportSuiteView project={currentProject} onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
+        {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
       </main>
@@ -584,8 +607,34 @@ export default function App() {
 
 // DASHBOARD COMPONENT
 function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
+  const levels = [
+    { name: 'Impact', color: '#b7791f' },
+    { name: 'Outcome', color: '#5265d8' },
+    { name: 'Output', color: '#12977a' },
+    { name: 'Activity', color: '#8291a7' }
+  ];
+  const totalIndicators = project.indicators.length;
+  let chartPosition = 0;
+  const chartSegments = levels.map(level => {
+    const count = project.indicators.filter(indicator => indicator.level === level.name).length;
+    const percentage = totalIndicators ? (count / totalIndicators) * 100 : 0;
+    const segment = `${level.color} ${chartPosition}% ${chartPosition + percentage}%`;
+    chartPosition += percentage;
+    return segment;
+  }).join(', ');
+
   return (
     <div className="space-y-6">
+      <div className="dashboard-heading">
+        <div>
+          <div className="eyebrow">MONITORING &amp; EVALUATION WORKSPACE</div>
+          <h2>{project.name}</h2>
+          <p><MapPin className="h-4 w-4" /> {project.location} <span className="heading-separator">·</span> Reporting period: 2026</p>
+        </div>
+        <button onClick={onOpenEditProject} className="dashboard-edit-button">
+          <Edit2 className="h-4 w-4" /> Edit project
+        </button>
+      </div>
       <div className="dashboard-stats grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
@@ -631,7 +680,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
             {project.indicators.map(ind => {
               const actual = Number(getCalculatedActual(project, ind));
               const target = ind.target || 1;
-              const pct = Math.min(100, Math.round((actual / target) * 100));
+              const pct = Math.min(100, Math.max(0, Math.round(((actual - ind.baseline) / (target - ind.baseline || 1)) * 100)));
               return (
                 <div key={ind.id} className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-2">
                   <div className="flex justify-between items-start text-xs font-bold">
@@ -655,17 +704,19 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
               <PieChart className="h-5 w-5 text-indigo-600" /> Indicator Level Breakdown
             </h3>
             <div className="py-6 flex justify-center">
-              <svg className="w-40 h-40" viewBox="0 0 36 36">
-                <path className="text-slate-200" strokeWidth="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path className="text-indigo-600" strokeDasharray="60, 100" strokeWidth="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
+              <div className="gmel-donut" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
+                <div className="gmel-donut-center">
+                  <strong>{totalIndicators}</strong>
+                  <span>indicators</span>
+                </div>
+              </div>
             </div>
             <div className="space-y-2 text-xs">
-              {['Impact', 'Outcome', 'Output', 'Activity'].map(lvl => {
+              {levels.map(({ name: lvl, color }) => {
                 const count = project.indicators.filter(i => i.level === lvl).length;
                 return (
                   <div key={lvl} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800">{lvl} Level</span>
+                    <span className="font-semibold text-slate-800 flex items-center gap-2"><span className="level-dot" style={{ backgroundColor: color }} />{lvl} level</span>
                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">{count}</span>
                   </div>
                 );
@@ -681,14 +732,51 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 // LOGFRAME COMPONENT
 function LogframeView({ project, getCalculatedActual, setProjects }) {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingIndicatorId, setEditingIndicatorId] = useState(null);
   const [newInd, setNewInd] = useState({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
 
   const handleAddIndicator = () => {
-    if (!newInd.title) return;
-    const indicatorObj = { ...newInd, id: `ind-${Date.now()}`, actual: newInd.baseline, mappedFieldId: null, calcType: 'SUM' };
+    if (!newInd.title.trim()) return;
+    const indicatorObj = { ...newInd, id: createId('ind'), actual: newInd.baseline, mappedFieldId: null, calcType: 'SUM' };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     setShowAddModal(false);
     setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+  };
+
+  const openIndicatorEditor = (indicator) => {
+    setNewInd({
+      level: indicator.level,
+      title: indicator.title,
+      baseline: indicator.baseline,
+      target: indicator.target,
+      unit: indicator.unit
+    });
+    setEditingIndicatorId(indicator.id);
+    setShowAddModal(true);
+  };
+
+  const handleSaveIndicator = () => {
+    if (!newInd.title.trim()) return;
+    if (!editingIndicatorId) {
+      handleAddIndicator();
+      return;
+    }
+
+    setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+      ...p,
+      indicators: p.indicators.map(ind => ind.id === editingIndicatorId ? { ...ind, ...newInd, title: newInd.title.trim() } : ind)
+    }));
+    setEditingIndicatorId(null);
+    setShowAddModal(false);
+    setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+  };
+
+  const handleDeleteIndicator = (indicator) => {
+    if (!window.confirm(`Delete the indicator "${indicator.title}"?`)) return;
+    setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+      ...p,
+      indicators: p.indicators.filter(ind => ind.id !== indicator.id)
+    }));
   };
 
   const handleMapField = (indicatorId, fieldId, calcType) => {
@@ -703,7 +791,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Logical Framework (Logframe) Matrix</h2>
-          <p className="text-sm text-slate-500">GMES automated calculation engine.</p>
+          <p className="text-sm text-slate-500">Indicators update automatically as linked field submissions arrive.</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
           <PlusCircle className="h-4 w-4" /> Add Indicator
@@ -721,6 +809,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <th className="p-4 text-center">Calculated Actual</th>
               <th className="p-4 text-center">Progress</th>
               <th className="p-4">Automated Data Mapping</th>
+              <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-sm">
@@ -772,6 +861,16 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                       )}
                     </div>
                   </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-lg p-2 text-slate-500 hover:bg-indigo-50 hover:text-indigo-700">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
@@ -782,7 +881,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">Add New Logframe Indicator</h3>
+            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add New Logframe Indicator'}</h3>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Hierarchy Level</label>
               <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm">
@@ -799,8 +898,8 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <div><label className="block text-xs font-bold mb-1">Unit</label><input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
             </div>
             <div className="flex justify-end space-x-2 pt-4 border-t">
-              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm border rounded-lg">Cancel</button>
-              <button onClick={handleAddIndicator} className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg">Save Indicator</button>
+              <button onClick={() => { setShowAddModal(false); setEditingIndicatorId(null); }} className="px-4 py-2 text-sm border rounded-lg">Cancel</button>
+              <button onClick={handleSaveIndicator} className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg">Save Indicator</button>
             </div>
           </div>
         </div>
@@ -821,13 +920,13 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [editDesc, setEditDesc] = useState('');
 
   const addField = (type) => {
-    setFields([...fields, { 
-      id: `field-${Date.now()}`, 
-      label: `New ${type.toUpperCase()} Question`, 
-      type, 
-      required: false, 
+    setFields([...fields, {
+      id: createId('field'),
+      label: `New ${type.toUpperCase()} Question`,
+      type,
+      required: false,
       options: type === 'select' ? ['Option 1', 'Option 2'] : [],
-      skipLogic: null 
+      skipLogic: null
     }]);
   };
 
@@ -836,7 +935,22 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
       alert('Please enter a title for the form.');
       return;
     }
-    const newForm = { id: `form-${Date.now()}`, title: formTitle, description: formDesc, fields };
+    if (fields.some(field => field.skipLogic && (!field.skipLogic.fieldId || !String(field.skipLogic.value ?? '').trim()))) {
+      alert('Complete the question and answer for each Skip logic rule.');
+      return;
+    }
+    const formId = createId('form');
+    const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
+    const newForm = {
+      id: formId,
+      title: formTitle,
+      description: formDesc,
+      fields: fields.map(field => ({
+        ...field,
+        id: fieldIds.get(field.id),
+        skipLogic: field.skipLogic ? { ...field.skipLogic, fieldId: fieldIds.get(field.skipLogic.fieldId) } : null
+      }))
+    };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
     setFormTitle('');
     setFormDesc('');
@@ -911,8 +1025,8 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
             <h3 className="text-sm font-bold text-slate-800">Form Questions ({fields.length})</h3>
             {fields.map((field, idx) => (
               <div key={field.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500 font-mono">#{idx + 1}</span>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-slate-500 font-mono">Question {idx + 1}</span>
                   <input 
                     type="text" 
                     value={field.label} 
@@ -924,23 +1038,81 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                     className="flex-1 bg-white border rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm" 
                   />
                   <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-1 rounded uppercase">{field.type}</span>
-                  
-                  {/* Mandatory Toggle */}
-                  <label className="flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={field.required} 
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].required = e.target.checked;
-                        setFields(updated);
-                      }} 
-                    />
-                    Mandatory *
-                  </label>
-
                   <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-1.5 rounded border border-red-200">Remove</button>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-slate-200 pt-3">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={field.required}
+                      onChange={(e) => setFields(fields.map(item => item.id === field.id ? { ...item, required: e.target.checked } : item))}
+                    />
+                    Required question
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(field.skipLogic)}
+                      disabled={idx === 0}
+                      onChange={(e) => setFields(fields.map(item => item.id === field.id
+                        ? { ...item, skipLogic: e.target.checked ? { fieldId: fields[idx - 1].id, value: '' } : null }
+                        : item))}
+                    />
+                    Skip logic
+                  </label>
+                </div>
+
+                {field.skipLogic && idx > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
+                    <div className="space-y-1">
+                      <label htmlFor={`skip-question-${field.id}`} className="block text-xs font-bold text-slate-700">Show this question when</label>
+                      <select
+                        id={`skip-question-${field.id}`}
+                        value={field.skipLogic.fieldId}
+                        onChange={(e) => setFields(fields.map(item => item.id === field.id
+                          ? { ...item, skipLogic: { fieldId: e.target.value, value: '' } }
+                          : item))}
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      >
+                        {fields.slice(0, idx).map(previousField => (
+                          <option key={previousField.id} value={previousField.id}>{previousField.label || `Question ${fields.indexOf(previousField) + 1}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor={`skip-value-${field.id}`} className="block text-xs font-bold text-slate-700">Answer is</label>
+                      {fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.type === 'select'
+                        && fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.options?.length > 0 ? (
+                          <select
+                            id={`skip-value-${field.id}`}
+                            value={field.skipLogic.value}
+                            onChange={(e) => setFields(fields.map(item => item.id === field.id
+                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
+                              : item))}
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          >
+                            <option value="">Choose an answer</option>
+                            {fields.find(previousField => previousField.id === field.skipLogic.fieldId).options.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            id={`skip-value-${field.id}`}
+                            type="text"
+                            value={field.skipLogic.value}
+                            onChange={(e) => setFields(fields.map(item => item.id === field.id
+                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
+                              : item))}
+                            placeholder="Enter the answer that reveals this question"
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          />
+                        )}
+                    </div>
+                    <p className="sm:col-span-2 text-[11px] text-slate-500">Respondents will only see this question when the earlier answer matches.</p>
+                  </div>
+                )}
 
                 {/* Additional config for Select options */}
                 {field.type === 'select' && (
@@ -1024,7 +1196,12 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!activeForm) return;
-    onSubmitForm(activeForm.id, formData);
+    const visibleResponses = Object.fromEntries(
+      activeForm.fields
+        .filter(field => isFieldVisible(field, formData))
+        .map(field => [field.id, formData[field.id] || ''])
+    );
+    onSubmitForm(activeForm.id, visibleResponses);
     setFormData({});
   };
 
@@ -1051,7 +1228,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         {activeForm ? (
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
             <h3 className="font-bold text-slate-900 text-lg border-b pb-2">{activeForm.title}</h3>
-            {activeForm.fields.map(field => {
+            {activeForm.fields.filter(field => isFieldVisible(field, formData)).map(field => {
               return (
                 <div key={field.id} className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
@@ -1201,11 +1378,11 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
 }
 
 // EXPORT SUITE COMPONENT
-function ExportSuiteView({ project, onExportSubmissions, onExportLogframe, onExportBackup }) {
+function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup }) {
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">GMES Data Export Suite</h2>
+        <h2 className="text-xl font-bold text-slate-900">GMEL Data Export Suite</h2>
         <p className="text-sm text-slate-500">Export field submissions, indicators, and backups.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1246,23 +1423,17 @@ function MobileSyncView({ project }) {
         <h2 className="text-xl font-bold text-slate-900">Mobile App Sync & API Hub</h2>
         <p className="text-sm text-slate-500">Pair mobile devices for offline enumerations.</p>
       </div>
-      <div className="bg-slate-900 text-white p-8 rounded-2xl shadow-lg space-y-6 flex flex-col md:flex-row items-center justify-between gap-6 border border-slate-800">
-        <div className="space-y-3">
-          <span className="bg-emerald-500/20 text-emerald-400 text-xs font-mono px-2.5 py-1 rounded border border-emerald-500/30">API Gateway Active</span>
-          <h3 className="text-xl font-bold">Field Device Pairing QR</h3>
-          <p className="text-xs text-slate-300 max-w-sm">Scan from the GMES Collector app to sync forms offline.</p>
-          <div className="text-xs text-slate-300 font-mono">
-            <p>Project Key: <strong>{project.code}</strong></p>
-            <p>Endpoint: <code>https://api.gmes-me.org/v1/{project.id}</code></p>
-          </div>
+      <div className="mobile-setup-card">
+        <div className="mobile-setup-icon"><Smartphone className="h-7 w-7" /></div>
+        <div>
+          <span className="setup-status">INTEGRATION SETUP REQUIRED</span>
+          <h3>Connect your field collection app</h3>
+          <p>Forms are ready to use. To receive submissions from other devices, connect GMEL to a hosted sync service or a supported mobile data-collection platform.</p>
+          <div className="setup-project"><span>Current project</span><strong>{project.name} · {project.code}</strong></div>
         </div>
-        <div className="bg-white p-4 rounded-2xl shadow-inner text-slate-900 text-center border">
-          <div className="w-36 h-36 bg-slate-900 p-2 rounded-xl flex flex-col justify-between text-white text-[9px] font-mono">
-            <div className="flex justify-between"><div className="w-8 h-8 border-2 border-white bg-slate-800"></div><div className="w-8 h-8 border-2 border-white bg-slate-800"></div></div>
-            <p className="text-center font-bold">SCAN TO SYNC</p>
-            <div className="flex justify-between"><div className="w-8 h-8 border-2 border-white bg-slate-800"></div><div className="w-8 h-8 bg-white"></div></div>
-          </div>
-          <p className="text-[10px] font-bold text-slate-600 mt-2">GMES Collector v3.4</p>
+        <div className="setup-note">
+          <strong>Prototype workspace</strong>
+          <span>Submissions currently stay in this browser. Cross-device sync and user accounts need a server connection.</span>
         </div>
       </div>
     </div>
