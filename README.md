@@ -1,23 +1,34 @@
-# React + Vite
+# G-MEL Monitoring System
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A mobile-friendly project monitoring and field data collection app built with React, Vite, and Capacitor.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm install
+npm run dev
+```
 
-## React Compiler
+## GitHub Pages
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+The requested Pages repository is `G-MEL-System/Go`. Build for its `/Go/` path with:
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+```sh
+npm run build:pages
+```
 
-## Expanding the Oxlint configuration
+Publish the contents of `dist` to GitHub Pages for that repository. Its Pages URL will be `https://g-mel-system.github.io/Go/` after Pages is enabled and the deployment completes. The repository connected to this workspace is different, so this build does not publish or push code.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Install on a phone
 
-## Deploying to GitHub Pages
+Open the deployed HTTPS link in Android Chrome and choose **Install app** or **Add to Home screen**. On iPhone, open it in Safari, tap **Share**, then **Add to Home Screen**. The app shell is cached for offline access after the first visit. Project data is stored in that browser's local storage and does not sync between devices.
 
-Push this project to a GitHub repository on the `main` branch, then set the repository's Pages source to **GitHub Actions** under **Settings > Pages**. The included workflow deploys the site on each push to `main`; find the live URL in the workflow run or the Pages settings.
+## Build the Android APK
+
+Install a supported JDK and Android SDK, then run:
+
+```sh
+npm run android:apk
+```
+
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. To install it, transfer the APK to an Android device and allow installation from that source in the device settings.

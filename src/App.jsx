@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import './App.css';
+import { Geolocation } from '@capacitor/geolocation';
 import { 
   BarChart3, 
   PlusCircle, 
@@ -21,7 +23,8 @@ import {
   Camera,
   Star,
   FileText as NoteIcon,
-  GitBranch
+  GitBranch,
+  MoreHorizontal
 } from 'lucide-react';
 
 // Default Initial M&E Projects
@@ -84,6 +87,31 @@ export default function App() {
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleInstallAvailable = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+
+    const handleInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', handleInstallAvailable);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
   
   // Modals & Selectors
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -296,11 +324,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans border-t-4 border-indigo-600">
+    <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans border-t-4 border-indigo-600">
       {/* Top Header Bar */}
-      <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-          <div className="flex items-center space-x-3">
+      <header className="app-header bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
+        <div className="header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+          <div className="brand flex items-center space-x-3">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-inner">
               <Layers className="h-6 w-6 text-white" />
             </div>
@@ -311,8 +339,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
+          <div className="project-toolbar flex items-center space-x-2 sm:space-x-3">
+            <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
               <Building2 className="h-4 w-4 text-indigo-400" />
               <label htmlFor="project-select" className="text-xs text-slate-300 font-medium">Project:</label>
               <select 
@@ -326,6 +354,19 @@ export default function App() {
                 ))}
               </select>
             </div>
+
+            {installPrompt && (
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                aria-label="Install G-MEL app"
+                title="Install G-MEL app"
+                className="install-app-button bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1 transition"
+              >
+                <Download className="h-4 w-4" />
+                <span>Install</span>
+              </button>
+            )}
 
             <button 
               onClick={openEditProject}
@@ -346,7 +387,7 @@ export default function App() {
         </div>
 
         {/* Tab Navigation Menu */}
-        <div className="bg-slate-800 border-t border-slate-700 shadow-inner">
+        <div className="desktop-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
@@ -378,7 +419,7 @@ export default function App() {
       </header>
 
       {/* Main View Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
+      <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
         {activeTab === 'dashboard' && <DashboardView project={currentProject} getCalculatedActual={getCalculatedActual} onOpenEditProject={openEditProject} />}
         {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
         {activeTab === 'builder' && <FormBuilderView project={currentProject} setProjects={setProjects} onRenameForm={handleRenameForm} onDeleteForm={handleDeleteForm} />}
@@ -387,6 +428,67 @@ export default function App() {
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
       </main>
+
+      <nav className="mobile-nav print:hidden" aria-label="Main navigation">
+        {[
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'logframe', label: 'Indicators', icon: TrendingUp },
+          { id: 'entry', label: 'Collect', icon: ListCheck },
+          { id: 'more', label: 'More', icon: MoreHorizontal }
+        ].map(item => {
+          const Icon = item.icon;
+          const selected = item.id === 'more'
+            ? showMobileMenu || ['builder', 'export', 'mobile', 'print'].includes(activeTab)
+            : activeTab === item.id;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={item.id === 'more' ? 'More sections' : item.label}
+              aria-current={selected ? 'page' : undefined}
+              onClick={() => {
+                if (item.id === 'more') {
+                  setShowMobileMenu(value => !value);
+                } else {
+                  setActiveTab(item.id);
+                  setShowMobileMenu(false);
+                }
+              }}
+              className={`mobile-nav-item${selected ? ' is-active' : ''}`}
+            >
+              <Icon aria-hidden="true" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {showMobileMenu && (
+        <div className="mobile-more-menu print:hidden">
+          {[
+            { id: 'builder', label: 'Form builder', icon: FileText },
+            { id: 'export', label: 'Export data', icon: Download },
+            { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
+            { id: 'print', label: 'Print forms', icon: Printer }
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setShowMobileMenu(false);
+                }}
+                className="mobile-more-item"
+              >
+                <Icon aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* CREATE NEW PROJECT MODAL */}
       {showAddProjectModal && (
@@ -484,7 +586,7 @@ export default function App() {
 function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="dashboard-stats grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase">Project Code</p>
@@ -904,22 +1006,19 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
 
   const activeForm = project.forms.find(f => f.id === selectedFormId);
 
-  // GPS Geolocation capture helper
-  const handleCaptureGPS = (fieldId) => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
+  const handleCaptureGPS = async (fieldId) => {
+    try {
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000
+      });
+      const coords = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+      setFormData(prev => ({ ...prev, [fieldId]: coords }));
+      alert(`GPS captured successfully: ${coords}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Unable to retrieve your location. Check location permissions and try again. ${message}`);
     }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
-        setFormData({ ...formData, [fieldId]: coords });
-        alert(`GPS captured successfully: ${coords}`);
-      },
-      (error) => {
-        alert('Unable to retrieve your location. Please check browser permissions.');
-      }
-    );
   };
 
   const handleSubmit = (e) => {
@@ -1180,7 +1279,7 @@ function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
           <h2 className="text-xl font-bold text-slate-900">Printable Paper Form Layout</h2>
           <p className="text-sm text-slate-500">Generates clean paper-ready survey sheets.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="print-actions flex items-center gap-3">
           <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm font-semibold bg-white">
             {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
           </select>

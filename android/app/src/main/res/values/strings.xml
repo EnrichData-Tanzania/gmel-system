@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">G-MEL System</string>
+    <string name="title_activity_main">G-MEL System</string>
+    <string name="package_name">org.gmel.monitoring</string>
+    <string name="custom_url_scheme">org.gmel.monitoring</string>
+</resources>
