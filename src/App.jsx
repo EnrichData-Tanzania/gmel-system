@@ -26,6 +26,12 @@ import {
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
+const isFieldVisible = (field, formData) => (
+  !field.skipLogic
+  || !field.skipLogic.fieldId
+  || String(formData[field.skipLogic.fieldId] ?? '') === String(field.skipLogic.value ?? '')
+);
+
 // Default Initial M&E Projects
 const initialProjects = [
   {
@@ -812,13 +818,13 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [editDesc, setEditDesc] = useState('');
 
   const addField = (type) => {
-    setFields([...fields, { 
+    setFields([...fields, {
       id: createId('field'),
-      label: `New ${type.toUpperCase()} Question`, 
-      type, 
-      required: false, 
+      label: `New ${type.toUpperCase()} Question`,
+      type,
+      required: false,
       options: type === 'select' ? ['Option 1', 'Option 2'] : [],
-      skipLogic: null 
+      skipLogic: null
     }]);
   };
 
@@ -827,12 +833,21 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
       alert('Please enter a title for the form.');
       return;
     }
+    if (fields.some(field => field.skipLogic && (!field.skipLogic.fieldId || !String(field.skipLogic.value ?? '').trim()))) {
+      alert('Complete the question and answer for each Skip logic rule.');
+      return;
+    }
     const formId = createId('form');
+    const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
     const newForm = {
       id: formId,
       title: formTitle,
       description: formDesc,
-      fields: fields.map(field => ({ ...field, id: createId('field') }))
+      fields: fields.map(field => ({
+        ...field,
+        id: fieldIds.get(field.id),
+        skipLogic: field.skipLogic ? { ...field.skipLogic, fieldId: fieldIds.get(field.skipLogic.fieldId) } : null
+      }))
     };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
     setFormTitle('');
@@ -908,8 +923,8 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
             <h3 className="text-sm font-bold text-slate-800">Form Questions ({fields.length})</h3>
             {fields.map((field, idx) => (
               <div key={field.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500 font-mono">#{idx + 1}</span>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-slate-500 font-mono">Question {idx + 1}</span>
                   <input 
                     type="text" 
                     value={field.label} 
@@ -921,23 +936,81 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                     className="flex-1 bg-white border rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm" 
                   />
                   <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-1 rounded uppercase">{field.type}</span>
-                  
-                  {/* Mandatory Toggle */}
-                  <label className="flex items-center gap-1 text-xs font-bold text-slate-700 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={field.required} 
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].required = e.target.checked;
-                        setFields(updated);
-                      }} 
-                    />
-                    Mandatory *
-                  </label>
-
                   <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-1.5 rounded border border-red-200">Remove</button>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-slate-200 pt-3">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={field.required}
+                      onChange={(e) => setFields(fields.map(item => item.id === field.id ? { ...item, required: e.target.checked } : item))}
+                    />
+                    Required question
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(field.skipLogic)}
+                      disabled={idx === 0}
+                      onChange={(e) => setFields(fields.map(item => item.id === field.id
+                        ? { ...item, skipLogic: e.target.checked ? { fieldId: fields[idx - 1].id, value: '' } : null }
+                        : item))}
+                    />
+                    Skip logic
+                  </label>
+                </div>
+
+                {field.skipLogic && idx > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
+                    <div className="space-y-1">
+                      <label htmlFor={`skip-question-${field.id}`} className="block text-xs font-bold text-slate-700">Show this question when</label>
+                      <select
+                        id={`skip-question-${field.id}`}
+                        value={field.skipLogic.fieldId}
+                        onChange={(e) => setFields(fields.map(item => item.id === field.id
+                          ? { ...item, skipLogic: { fieldId: e.target.value, value: '' } }
+                          : item))}
+                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                      >
+                        {fields.slice(0, idx).map(previousField => (
+                          <option key={previousField.id} value={previousField.id}>{previousField.label || `Question ${fields.indexOf(previousField) + 1}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor={`skip-value-${field.id}`} className="block text-xs font-bold text-slate-700">Answer is</label>
+                      {fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.type === 'select'
+                        && fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.options?.length > 0 ? (
+                          <select
+                            id={`skip-value-${field.id}`}
+                            value={field.skipLogic.value}
+                            onChange={(e) => setFields(fields.map(item => item.id === field.id
+                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
+                              : item))}
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          >
+                            <option value="">Choose an answer</option>
+                            {fields.find(previousField => previousField.id === field.skipLogic.fieldId).options.map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            id={`skip-value-${field.id}`}
+                            type="text"
+                            value={field.skipLogic.value}
+                            onChange={(e) => setFields(fields.map(item => item.id === field.id
+                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
+                              : item))}
+                            placeholder="Enter the answer that reveals this question"
+                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
+                          />
+                        )}
+                    </div>
+                    <p className="sm:col-span-2 text-[11px] text-slate-500">Respondents will only see this question when the earlier answer matches.</p>
+                  </div>
+                )}
 
                 {/* Additional config for Select options */}
                 {field.type === 'select' && (
@@ -1024,7 +1097,12 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!activeForm) return;
-    onSubmitForm(activeForm.id, formData);
+    const visibleResponses = Object.fromEntries(
+      activeForm.fields
+        .filter(field => isFieldVisible(field, formData))
+        .map(field => [field.id, formData[field.id] || ''])
+    );
+    onSubmitForm(activeForm.id, visibleResponses);
     setFormData({});
   };
 
@@ -1051,7 +1129,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         {activeForm ? (
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
             <h3 className="font-bold text-slate-900 text-lg border-b pb-2">{activeForm.title}</h3>
-            {activeForm.fields.map(field => {
+            {activeForm.fields.filter(field => isFieldVisible(field, formData)).map(field => {
               return (
                 <div key={field.id} className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
