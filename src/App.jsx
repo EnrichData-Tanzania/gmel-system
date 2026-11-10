@@ -24,6 +24,8 @@ import {
   GitBranch
 } from 'lucide-react';
 
+const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
+
 // Default Initial M&E Projects
 const initialProjects = [
   {
@@ -129,7 +131,7 @@ export default function App() {
     }
 
     const createdProject = {
-      id: `proj-${Date.now()}`,
+      id: createId('proj'),
       name: newProj.name,
       code: newProj.code,
       donor: newProj.donor || 'N/A',
@@ -234,15 +236,20 @@ export default function App() {
   };
 
   const exportToCSV = (filename, rows) => {
-    const processRow = row => row.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',');
-    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(processRow).join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const processRow = row => row.map(val => {
+      const value = String(val ?? '');
+      const spreadsheetSafeValue = /^\s*[=+\-@]/.test(value) ? `'${value}` : value;
+      return `"${spreadsheetSafeValue.replace(/"/g, '""')}"`;
+    }).join(',');
+    const csvContent = `\uFEFF${rows.map(processRow).join('\r\n')}`;
+    const objectUrl = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', objectUrl);
     link.setAttribute('download', `${filename}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   };
 
   const exportSubmissionsCSV = () => {
@@ -250,11 +257,21 @@ export default function App() {
       alert('No submission data available to export.');
       return;
     }
-    const headers = ['Submission ID', 'Timestamp', 'Form ID', 'Field Data Recorded'];
+    const fields = currentProject.forms.flatMap(form => form.fields.map(field => ({
+      formId: form.id,
+      fieldId: field.id,
+      header: `${form.title} — ${field.label}`
+    })));
+    const headers = ['Submission ID', 'Timestamp', 'Form', ...fields.map(field => field.header)];
     const rows = [headers];
     currentProject.submissions.forEach(sub => {
-      const dataString = Object.entries(sub.data).map(([k, v]) => `${k}: ${v}`).join(' | ');
-      rows.push([sub.id, sub.timestamp, sub.formId, dataString]);
+      const form = currentProject.forms.find(item => item.id === sub.formId);
+      rows.push([
+        sub.id,
+        sub.timestamp,
+        form?.title || sub.formId,
+        ...fields.map(field => field.formId === sub.formId ? sub.data[field.fieldId] || '' : '')
+      ]);
     });
     exportToCSV(`${currentProject.code}_Submissions`, rows);
   };
@@ -272,7 +289,7 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projects, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `GMES_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
+    downloadAnchor.    setAttribute("download", `GMEL_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -280,7 +297,7 @@ export default function App() {
 
   const handleFormSubmit = (formId, formData) => {
     const newSubmission = {
-      id: `sub-${Date.now()}`,
+      id: createId('sub'),
       formId,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       data: formData
@@ -296,9 +313,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans border-t-4 border-indigo-600">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
       {/* Top Header Bar */}
-      <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
+      <header className="app-header bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-inner">
@@ -306,7 +323,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                G-MEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">System</span>
+                GMEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">SYSTEM</span>
               </h1>
             </div>
           </div>
@@ -346,7 +363,7 @@ export default function App() {
         </div>
 
         {/* Tab Navigation Menu */}
-        <div className="bg-slate-800 border-t border-slate-700 shadow-inner">
+        <div className="app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
@@ -378,12 +395,12 @@ export default function App() {
       </header>
 
       {/* Main View Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
+      <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
         {activeTab === 'dashboard' && <DashboardView project={currentProject} getCalculatedActual={getCalculatedActual} onOpenEditProject={openEditProject} />}
         {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
         {activeTab === 'builder' && <FormBuilderView project={currentProject} setProjects={setProjects} onRenameForm={handleRenameForm} onDeleteForm={handleDeleteForm} />}
         {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
-        {activeTab === 'export' && <ExportSuiteView project={currentProject} onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
+        {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
       </main>
@@ -482,8 +499,34 @@ export default function App() {
 
 // DASHBOARD COMPONENT
 function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
+  const levels = [
+    { name: 'Impact', color: '#b7791f' },
+    { name: 'Outcome', color: '#5265d8' },
+    { name: 'Output', color: '#12977a' },
+    { name: 'Activity', color: '#8291a7' }
+  ];
+  const totalIndicators = project.indicators.length;
+  let chartPosition = 0;
+  const chartSegments = levels.map(level => {
+    const count = project.indicators.filter(indicator => indicator.level === level.name).length;
+    const percentage = totalIndicators ? (count / totalIndicators) * 100 : 0;
+    const segment = `${level.color} ${chartPosition}% ${chartPosition + percentage}%`;
+    chartPosition += percentage;
+    return segment;
+  }).join(', ');
+
   return (
     <div className="space-y-6">
+      <div className="dashboard-heading">
+        <div>
+          <div className="eyebrow">MONITORING &amp; EVALUATION WORKSPACE</div>
+          <h2>{project.name}</h2>
+          <p><MapPin className="h-4 w-4" /> {project.location} <span className="heading-separator">·</span> Reporting period: 2026</p>
+        </div>
+        <button onClick={onOpenEditProject} className="dashboard-edit-button">
+          <Edit2 className="h-4 w-4" /> Edit project
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
@@ -529,7 +572,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
             {project.indicators.map(ind => {
               const actual = Number(getCalculatedActual(project, ind));
               const target = ind.target || 1;
-              const pct = Math.min(100, Math.round((actual / target) * 100));
+              const pct = Math.min(100, Math.max(0, Math.round(((actual - ind.baseline) / (target - ind.baseline || 1)) * 100)));
               return (
                 <div key={ind.id} className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-2">
                   <div className="flex justify-between items-start text-xs font-bold">
@@ -553,17 +596,19 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
               <PieChart className="h-5 w-5 text-indigo-600" /> Indicator Level Breakdown
             </h3>
             <div className="py-6 flex justify-center">
-              <svg className="w-40 h-40" viewBox="0 0 36 36">
-                <path className="text-slate-200" strokeWidth="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path className="text-indigo-600" strokeDasharray="60, 100" strokeWidth="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
+              <div className="gmel-donut" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
+                <div className="gmel-donut-center">
+                  <strong>{totalIndicators}</strong>
+                  <span>indicators</span>
+                </div>
+              </div>
             </div>
             <div className="space-y-2 text-xs">
-              {['Impact', 'Outcome', 'Output', 'Activity'].map(lvl => {
+              {levels.map(({ name: lvl, color }) => {
                 const count = project.indicators.filter(i => i.level === lvl).length;
                 return (
                   <div key={lvl} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800">{lvl} Level</span>
+                    <span className="font-semibold text-slate-800 flex items-center gap-2"><span className="level-dot" style={{ backgroundColor: color }} />{lvl} level</span>
                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">{count}</span>
                   </div>
                 );
@@ -579,14 +624,51 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 // LOGFRAME COMPONENT
 function LogframeView({ project, getCalculatedActual, setProjects }) {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingIndicatorId, setEditingIndicatorId] = useState(null);
   const [newInd, setNewInd] = useState({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
 
   const handleAddIndicator = () => {
-    if (!newInd.title) return;
-    const indicatorObj = { ...newInd, id: `ind-${Date.now()}`, actual: newInd.baseline, mappedFieldId: null, calcType: 'SUM' };
+    if (!newInd.title.trim()) return;
+    const indicatorObj = { ...newInd, id: createId('ind'), actual: newInd.baseline, mappedFieldId: null, calcType: 'SUM' };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     setShowAddModal(false);
     setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+  };
+
+  const openIndicatorEditor = (indicator) => {
+    setNewInd({
+      level: indicator.level,
+      title: indicator.title,
+      baseline: indicator.baseline,
+      target: indicator.target,
+      unit: indicator.unit
+    });
+    setEditingIndicatorId(indicator.id);
+    setShowAddModal(true);
+  };
+
+  const handleSaveIndicator = () => {
+    if (!newInd.title.trim()) return;
+    if (!editingIndicatorId) {
+      handleAddIndicator();
+      return;
+    }
+
+    setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+      ...p,
+      indicators: p.indicators.map(ind => ind.id === editingIndicatorId ? { ...ind, ...newInd, title: newInd.title.trim() } : ind)
+    }));
+    setEditingIndicatorId(null);
+    setShowAddModal(false);
+    setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+  };
+
+  const handleDeleteIndicator = (indicator) => {
+    if (!window.confirm(`Delete the indicator "${indicator.title}"?`)) return;
+    setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+      ...p,
+      indicators: p.indicators.filter(ind => ind.id !== indicator.id)
+    }));
   };
 
   const handleMapField = (indicatorId, fieldId, calcType) => {
@@ -601,7 +683,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Logical Framework (Logframe) Matrix</h2>
-          <p className="text-sm text-slate-500">GMES automated calculation engine.</p>
+          <p className="text-sm text-slate-500">Indicators update automatically as linked field submissions arrive.</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
           <PlusCircle className="h-4 w-4" /> Add Indicator
@@ -619,6 +701,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <th className="p-4 text-center">Calculated Actual</th>
               <th className="p-4 text-center">Progress</th>
               <th className="p-4">Automated Data Mapping</th>
+              <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-sm">
@@ -670,6 +753,16 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                       )}
                     </div>
                   </td>
+                  <td className="p-4">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-lg p-2 text-slate-500 hover:bg-indigo-50 hover:text-indigo-700">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               );
             })}
@@ -680,7 +773,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">Add New Logframe Indicator</h3>
+            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add New Logframe Indicator'}</h3>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Hierarchy Level</label>
               <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm">
@@ -697,8 +790,8 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <div><label className="block text-xs font-bold mb-1">Unit</label><input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
             </div>
             <div className="flex justify-end space-x-2 pt-4 border-t">
-              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm border rounded-lg">Cancel</button>
-              <button onClick={handleAddIndicator} className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg">Save Indicator</button>
+              <button onClick={() => { setShowAddModal(false); setEditingIndicatorId(null); }} className="px-4 py-2 text-sm border rounded-lg">Cancel</button>
+              <button onClick={handleSaveIndicator} className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg">Save Indicator</button>
             </div>
           </div>
         </div>
@@ -720,7 +813,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
 
   const addField = (type) => {
     setFields([...fields, { 
-      id: `field-${Date.now()}`, 
+      id: createId('field'),
       label: `New ${type.toUpperCase()} Question`, 
       type, 
       required: false, 
@@ -734,7 +827,13 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
       alert('Please enter a title for the form.');
       return;
     }
-    const newForm = { id: `form-${Date.now()}`, title: formTitle, description: formDesc, fields };
+    const formId = createId('form');
+    const newForm = {
+      id: formId,
+      title: formTitle,
+      description: formDesc,
+      fields: fields.map(field => ({ ...field, id: createId('field') }))
+    };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
     setFormTitle('');
     setFormDesc('');
@@ -916,7 +1015,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         setFormData({ ...formData, [fieldId]: coords });
         alert(`GPS captured successfully: ${coords}`);
       },
-      (error) => {
+      () => {
         alert('Unable to retrieve your location. Please check browser permissions.');
       }
     );
@@ -1102,11 +1201,11 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
 }
 
 // EXPORT SUITE COMPONENT
-function ExportSuiteView({ project, onExportSubmissions, onExportLogframe, onExportBackup }) {
+function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup }) {
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">GMES Data Export Suite</h2>
+        <h2 className="text-xl font-bold text-slate-900">GMEL Data Export Suite</h2>
         <p className="text-sm text-slate-500">Export field submissions, indicators, and backups.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1147,23 +1246,17 @@ function MobileSyncView({ project }) {
         <h2 className="text-xl font-bold text-slate-900">Mobile App Sync & API Hub</h2>
         <p className="text-sm text-slate-500">Pair mobile devices for offline enumerations.</p>
       </div>
-      <div className="bg-slate-900 text-white p-8 rounded-2xl shadow-lg space-y-6 flex flex-col md:flex-row items-center justify-between gap-6 border border-slate-800">
-        <div className="space-y-3">
-          <span className="bg-emerald-500/20 text-emerald-400 text-xs font-mono px-2.5 py-1 rounded border border-emerald-500/30">API Gateway Active</span>
-          <h3 className="text-xl font-bold">Field Device Pairing QR</h3>
-          <p className="text-xs text-slate-300 max-w-sm">Scan from the GMES Collector app to sync forms offline.</p>
-          <div className="text-xs text-slate-300 font-mono">
-            <p>Project Key: <strong>{project.code}</strong></p>
-            <p>Endpoint: <code>https://api.gmes-me.org/v1/{project.id}</code></p>
-          </div>
+      <div className="mobile-setup-card">
+        <div className="mobile-setup-icon"><Smartphone className="h-7 w-7" /></div>
+        <div>
+          <span className="setup-status">INTEGRATION SETUP REQUIRED</span>
+          <h3>Connect your field collection app</h3>
+          <p>Forms are ready to use. To receive submissions from other devices, connect GMEL to a hosted sync service or a supported mobile data-collection platform.</p>
+          <div className="setup-project"><span>Current project</span><strong>{project.name} · {project.code}</strong></div>
         </div>
-        <div className="bg-white p-4 rounded-2xl shadow-inner text-slate-900 text-center border">
-          <div className="w-36 h-36 bg-slate-900 p-2 rounded-xl flex flex-col justify-between text-white text-[9px] font-mono">
-            <div className="flex justify-between"><div className="w-8 h-8 border-2 border-white bg-slate-800"></div><div className="w-8 h-8 border-2 border-white bg-slate-800"></div></div>
-            <p className="text-center font-bold">SCAN TO SYNC</p>
-            <div className="flex justify-between"><div className="w-8 h-8 border-2 border-white bg-slate-800"></div><div className="w-8 h-8 bg-white"></div></div>
-          </div>
-          <p className="text-[10px] font-bold text-slate-600 mt-2">GMES Collector v3.4</p>
+        <div className="setup-note">
+          <strong>Prototype workspace</strong>
+          <span>Submissions currently stay in this browser. Cross-device sync and user accounts need a server connection.</span>
         </div>
       </div>
     </div>
