@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "G-MEL Monitoring System",
+  "short_name": "G-MEL",
+  "description": "Project monitoring, field data collection, and indicator tracking.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

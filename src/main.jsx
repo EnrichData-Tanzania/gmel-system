@@ -8,3 +8,15 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+if (
+  'serviceWorker' in navigator &&
+  import.meta.env.PROD &&
+  ['http:', 'https:'].includes(window.location.protocol)
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(error => {
+      console.error('Unable to register the G-MEL offline app.', error);
+    });
+  });
+}
