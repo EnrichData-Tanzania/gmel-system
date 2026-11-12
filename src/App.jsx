@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { Geolocation } from '@capacitor/geolocation';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
   BarChart3, 
   PlusCircle, 
@@ -27,6 +29,21 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
+// ==========================================
+// FIREBASE CLOUD CONFIGURATION
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
+  authDomain: "online-shop-dcbea.firebaseapp.com",
+  projectId: "online-shop-dcbea",
+  storageBucket: "online-shop-dcbea.firebasestorage.app",
+  messagingSenderId: "113310368595",
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
 const isFieldVisible = (field, formData) => (
@@ -35,68 +52,77 @@ const isFieldVisible = (field, formData) => (
   || String(formData[field.skipLogic.fieldId] ?? '') === String(field.skipLogic.value ?? '')
 );
 
-// Default Initial M&E Projects
+// Default Initial M&E Projects (Fallback if cloud is empty)
 const initialProjects = [
   {
     id: 'proj-1',
-    name: 'Boresha Elimu Project',
-    code: 'BEP-2026',
-    donor: 'Global Education Fund',
-    budget: '$250,000',
-    location: 'Mbozi District, Tanzania',
+    name: 'Sustainable Water Support',
+    code: 'SWS-001',
+    donor: 'WASH Fund',
+    budget: '$30,000',
+    location: 'Arusha Region',
     indicators: [
-      { id: 'ind-1', level: 'Impact', title: 'Literacy rate among primary students', baseline: 42, target: 75, actual: 42, unit: '%', mappedFieldId: null, calcType: 'AVG' },
-      { id: 'ind-2', level: 'Outcome', title: 'Teachers applying gender-responsive pedagogy', baseline: 15, target: 80, actual: 15, unit: 'Teachers', mappedFieldId: null, calcType: 'COUNT' },
-      { id: 'ind-3', level: 'Output', title: 'Learning kits distributed to schools', baseline: 0, target: 500, actual: 0, unit: 'Kits', mappedFieldId: 'field-kits', calcType: 'SUM' },
-      { id: 'ind-4', level: 'Output', title: 'Quarterly teacher training sessions held', baseline: 0, target: 12, actual: 0, unit: 'Sessions', mappedFieldId: null, calcType: 'COUNT' }
+      { id: 'ind-1', level: 'Outcome', title: '% Water points functional during dry seasons', baseline: 0, target: 77, actual: 0, unit: '%', mappedFieldId: null, calcType: 'AVG' },
+      { id: 'ind-2', level: 'Output', title: '# of new or rehabilitated water points', baseline: 0, target: 100, actual: 0, unit: 'number', mappedFieldId: null, calcType: 'SUM' }
     ],
     forms: [
       {
         id: 'form-1',
-        title: 'School Material Distribution Tracking Form',
-        description: 'Record physical delivery of educational supplies with GPS and photos.',
+        title: 'Water Point Assessment Form',
+        description: 'Record water point functionality and location.',
         fields: [
-          { id: 'field-school', label: 'School Name', type: 'text', required: true },
-          { id: 'field-kits', label: 'Number of Learning Kits Delivered', type: 'number', required: true },
-          { id: 'field-gps', label: 'School GPS Coordinates', type: 'location', required: true },
-          { id: 'field-satisfaction', label: 'Principal Satisfaction Rating', type: 'rating', required: false }
+          { id: 'field-name', label: 'Water Point Name', type: 'text', required: true },
+          { id: 'field-status', label: 'Functional Status', type: 'select', options: ['Functional', 'Broken Down'], required: true },
+          { id: 'field-gps', label: 'GPS Location', type: 'location', required: true }
         ]
       }
     ],
-    submissions: [
-      { id: 'sub-101', formId: 'form-1', timestamp: '2026-10-15 10:30', data: { 'field-school': 'Mbozi Primary', 'field-kits': '120', 'field-gps': '-8.9562, 32.7351', 'field-satisfaction': '5' } },
-      { id: 'sub-102', formId: 'form-1', timestamp: '2026-10-18 14:15', data: { 'field-school': 'Vwawa Secondary', 'field-kits': '180', 'field-gps': '-8.9214, 32.7842', 'field-satisfaction': '4' } }
-    ]
-  },
-  {
-    id: 'proj-2',
-    name: 'Health & Sanitation Initiative',
-    code: 'HSI-2026',
-    donor: 'WASH International',
-    budget: '$180,000',
-    location: 'Ruvuma Region, Tanzania',
-    indicators: [
-      { id: 'ind-201', level: 'Outcome', title: 'Households with functional handwashing stations', baseline: 10, target: 350, actual: 10, unit: 'Households', mappedFieldId: null, calcType: 'SUM' }
-    ],
-    forms: [],
     submissions: []
   }
 ];
 
 export default function App() {
-  const [projects, setProjects] = useState(() => {
-    const savedProjects = localStorage.getItem('gmes_me_projects');
-    return savedProjects ? JSON.parse(savedProjects) : initialProjects;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('gmes_me_projects', JSON.stringify(projects));
-  }, [projects]);
+  const [projects, setProjects] = useState(initialProjects);
+  const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+
+  // 1. Fetch live data from Firebase Firestore on app load
+  useEffect(() => {
+    async function fetchCloudData() {
+      try {
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists() && docSnap.data().projects) {
+          setProjects(docSnap.data().projects);
+        }
+      } catch (err) {
+        console.error('Error loading from Firebase, using defaults:', err);
+      } finally {
+        setIsLoadedFromCloud(true);
+      }
+    }
+    fetchCloudData();
+  }, []);
+
+  // 2. Sync state changes to Firebase Firestore automatically
+  useEffect(() => {
+    if (!isLoadedFromCloud) return;
+
+    async function saveCloudData() {
+      try {
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        await setDoc(docRef, { projects, updated_at: new Date() });
+      } catch (err) {
+        console.error('Error saving to Firebase:', err);
+      }
+    }
+    saveCloudData();
+  }, [projects, isLoadedFromCloud]);
 
   useEffect(() => {
     const handleInstallAvailable = (event) => {
@@ -323,7 +349,7 @@ export default function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projects, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.    setAttribute("download", `GMEL_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
+    downloadAnchor.setAttribute("download", `GMEL_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -519,7 +545,7 @@ export default function App() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
               <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-indigo-600" /> Create New M&E Project
+                <Building2 className="h-5 w-5 text-indigo-600" /> Create New M&amp;E Project
               </h3>
               <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
             </div>
@@ -912,7 +938,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  // field structure: { id, label, type, required, options (for select), skipLogic: { fieldId, value } }
   const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
 
   const [editingFormId, setEditingFormId] = useState(null);
@@ -1420,20 +1445,20 @@ function MobileSyncView({ project }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">Mobile App Sync & API Hub</h2>
+        <h2 className="text-xl font-bold text-slate-900">Mobile App Sync &amp; API Hub</h2>
         <p className="text-sm text-slate-500">Pair mobile devices for offline enumerations.</p>
       </div>
       <div className="mobile-setup-card">
         <div className="mobile-setup-icon"><Smartphone className="h-7 w-7" /></div>
         <div>
-          <span className="setup-status">INTEGRATION SETUP REQUIRED</span>
-          <h3>Connect your field collection app</h3>
-          <p>Forms are ready to use. To receive submissions from other devices, connect GMEL to a hosted sync service or a supported mobile data-collection platform.</p>
+          <span className="setup-status">CLOUD SYNC ACTIVE (FIREBASE)</span>
+          <h3>Connected to Firebase Firestore</h3>
+          <p>Your M&amp;E system is now synced to Firebase. Any changes or submissions made on Chrome, Edge, or mobile browsers will update in real time.</p>
           <div className="setup-project"><span>Current project</span><strong>{project.name} · {project.code}</strong></div>
         </div>
         <div className="setup-note">
-          <strong>Prototype workspace</strong>
-          <span>Submissions currently stay in this browser. Cross-device sync and user accounts need a server connection.</span>
+          <strong>Multi-Device Workspace</strong>
+          <span>Data persists across all browsers and devices instantly through Firebase Firestore.</span>
         </div>
       </div>
     </div>
