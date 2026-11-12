@@ -824,11 +824,9 @@ function UserGuidelinesView() {
   );
 }
 
-function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) { // <-- ADDED setProjects HERE
+function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newExp, setNewExp] = useState({ title: '', amount: '', date: '' });
-  
-  // ... rest of your code ...
 
   const levels = [
     { name: 'Impact', color: '#b7791f' },
@@ -999,6 +997,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                 <DollarSign className="h-6 w-6 text-emerald-600" /> Budget Utilization
               </h3>
               <button 
+                type="button"
                 onClick={() => setShowExpenseModal(true)} 
                 className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold px-3 py-1.5 rounded-lg hover:bg-emerald-100"
               >
@@ -1057,7 +1056,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-xl font-extrabold text-slate-900">Record Project Expense</h3>
-              <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 font-bold text-lg">✕</button>
+              <button type="button" onClick={() => setShowExpenseModal(false)} className="text-slate-400 font-bold text-lg">✕</button>
             </div>
             <form onSubmit={handleAddExpense} className="space-y-4 text-base">
               <div>
@@ -1085,7 +1084,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
     </div>
   );
 }
-
 function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
