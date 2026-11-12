@@ -57,12 +57,6 @@ try {
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
-const isFieldVisible = (field, formData) => (
-  !field.skipLogic
-  || !field.skipLogic.fieldId
-  || String(formData[field.skipLogic.fieldId] ?? '') === String(field.skipLogic.value ?? '')
-);
-
 // Default Initial M&E Projects
 const initialProjects = [
   {
@@ -95,11 +89,11 @@ const initialProjects = [
 export default function App() {
   const [projects, setProjects] = useState(initialProjects);
   const [license, setLicense] = useState({
-    code: '',
-    level: '',
-    demoClaimed: false,
-    activatedAt: null,
-    expiresAt: null
+    code: 'DEMO-5DAYS',
+    level: 'Level 1: 5-Day Demo',
+    demoClaimed: true,
+    activatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
   });
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
@@ -127,7 +121,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error('Error loading from Firebase, using defaults:', err);
+        console.error('Error loading from Firebase:', err);
       } finally {
         setIsLoadedFromCloud(true);
       }
@@ -184,33 +178,31 @@ export default function App() {
 
   const currentProject = projects.find(p => p.id === activeProjectId) || projects[0] || { id: '', name: 'No Projects', code: '', indicators: [], forms: [], submissions: [] };
 
-  // Check if license is valid or expired
+  // Check if trial/license is expired
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
-  const hasValidLicense = Boolean(license.code && !isExpired);
 
-  // If data is still loading from cloud, show loading screen
   if (!isLoadedFromCloud) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-sm text-slate-400">Loading GMEL System Workspace from Cloud...</p>
+          <p className="text-sm text-slate-400">Syncing GMEL Workspace with Firebase...</p>
         </div>
       </div>
     );
   }
 
-  // IF NO VALID LICENSE, LOCK APP AND SHOW ACTIVATION / PAYMENT GATEWAY SCREEN
-  if (!hasValidLicense) {
+  // IF TRIAL EXPIRED, LOCK APP AND SHOW UPGRADE SCREEN AUTOMATICALLY
+  if (isExpired) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-white">
         <div className="max-w-xl w-full">
           <div className="text-center mb-6">
-            <div className="bg-indigo-600 p-3 rounded-2xl w-fit mx-auto shadow-lg mb-3">
-              <Layers className="h-8 w-8 text-white" />
+            <div className="bg-red-600 p-3 rounded-2xl w-fit mx-auto shadow-lg mb-3">
+              <AlertTriangle className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">GMEL M&amp;E SYSTEM ACCESS GATEWAY</h1>
-            <p className="text-sm text-slate-400 mt-1">Please select a subscription plan or activate your license to proceed.</p>
+            <h1 className="text-2xl font-extrabold tracking-tight">DEMO PERIOD HAS EXPIRED</h1>
+            <p className="text-sm text-slate-400 mt-1">Your 5-day evaluation trial has ended. Please enter an activation code to continue.</p>
           </div>
           
           <LicenseActivationView license={license} setLicense={setLicense} isGateway={true} />
@@ -590,7 +582,6 @@ export default function App() {
   );
 }
 
-// HELPER CALCULATOR FUNCTION
 function getCalculatedActual(project, ind) {
   if (!ind.mappedFieldId) return ind.baseline || 0;
   const values = project.submissions.map(sub => Number(sub.data[ind.mappedFieldId])).filter(v => !isNaN(v));
@@ -600,7 +591,7 @@ function getCalculatedActual(project, ind) {
   if (ind.calcType === 'COUNT') return values.length;
   if (ind.calcType === 'MAX') return Math.max(...values);
   if (ind.calcType === 'PERCENTAGE') return ((values.filter(v => v > 0).length / values.length) * 100).toFixed(0);
-  return values.reduce((a, b) => a + b, 0); // Default SUM
+  return values.reduce((a, b) => a + b, 0);
 }
 
 function exportCSV(dataArray, filename) {
@@ -621,7 +612,6 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
-// DASHBOARD COMPONENT
 function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
   const levels = [
     { name: 'Impact', color: '#b7791f' },
@@ -743,7 +733,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
   );
 }
 
-// LOGFRAME COMPONENT
 function LogframeView({ project, getCalculatedActual, setProjects }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
@@ -923,7 +912,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   );
 }
 
-// LICENSE & ACTIVATION COMPONENT
 function LicenseActivationView({ license, setLicense, isGateway = false }) {
   const [inputCode, setInputCode] = useState('');
 
@@ -932,10 +920,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
     let newLicenseData = null;
 
     if (code === 'DEMO-5DAYS') {
-      if (license.demoClaimed || license.code === 'DEMO-5DAYS') {
-        alert('❌ This workspace has already claimed the 5-day demo. Please upgrade to an Annual or Lifetime plan.');
-        return;
-      }
       newLicenseData = {
         code,
         level: 'Level 1: 5-Day Demo',
@@ -960,7 +944,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         expiresAt: null
       };
     } else {
-      alert('Invalid activation code. Please enter a valid code or request one after payment.');
+      alert('Invalid activation code. Please enter a valid code.');
       return;
     }
 
@@ -989,7 +973,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200 text-slate-900'}`}>
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
             <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
@@ -1013,7 +997,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:support@enrichdata.or.tz?subject=Request%20Annual%20License%20Key"
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
@@ -1029,7 +1013,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:support@enrichdata.or.tz?subject=Request%20Lifetime%20License%20Key"
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License"
               className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
@@ -1049,6 +1033,21 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
               {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
               {isExpired ? 'Expired' : 'Active'}
             </span>
+          </div>
+        )}
+
+        {!isGateway && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
+              <p className="font-bold text-slate-900 mt-1">{license.level}</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
+              <p className="font-bold text-indigo-600 mt-1">
+                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
+              </p>
+            </div>
           </div>
         )}
 
@@ -1073,7 +1072,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
   );
 }
 
-// CUSTOM REPORTS COMPONENT
 function CustomReportsView({ project, getCalculatedActual }) {
   return (
     <div className="space-y-6">
@@ -1146,7 +1144,6 @@ function CustomReportsView({ project, getCalculatedActual }) {
   );
 }
 
-// FORM BUILDER COMPONENT
 function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
@@ -1330,7 +1327,6 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   );
 }
 
-// DATA ENTRY COMPONENT
 function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
   const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
   const [formData, setFormData] = useState({});
@@ -1528,7 +1524,6 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
   );
 }
 
-// EXPORT SUITE COMPONENT
 function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup }) {
   return (
     <div className="space-y-6">
@@ -1566,7 +1561,6 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
   );
 }
 
-// MOBILE SYNC COMPONENT
 function MobileSyncView({ project }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -1591,7 +1585,6 @@ function MobileSyncView({ project }) {
   );
 }
 
-// PRINTABLE FORMS VIEW COMPONENT
 function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
   const activeForm = project.forms.find(f => f.id === selectedFormId) || project.forms[0];
   return (
