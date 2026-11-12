@@ -32,7 +32,9 @@ import {
   ShieldCheck,
   AlertTriangle,
   Mail,
-  BookOpen
+  BookOpen,
+  Award,
+  GraduationCap
 } from 'lucide-react';
 
 // ==========================================
@@ -641,15 +643,15 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
-// USER GUIDELINES COMPONENT (WITH FOUNDER GABRIEL INDICATION)
+// USER GUIDELINES COMPONENT WITH GABRIEL'S PROFESSIONAL PROFILE
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder / Owner: Gabriel Godiel Mashambo\n\n1. Top Navigation & Header Quick Controls\n- Project Switcher: Toggle between projects instantly.\n- Sync, Guide, License: Quick access buttons on the top bar.\n- New Project: Create initiatives with budgets and regions.\n\n2. Dashboard & Visuals\n- Displays KPI metrics, progress bars, and indicator breakdowns.\n\n3. Logical Framework Matrix (Logframe)\n- Manage indicators and map them automatically to survey fields.\n\n4. Custom Reports & Scorecard\n- Donor-ready executive performance scorecards with print support.\n\n5. Advanced Form Builder\n- Design custom forms with GPS, photos, notes, and ratings.\n\n6. Field Data Submission\n- Record survey responses and capture precise GPS coordinates.\n\n7. Data Export Suite\n- Export raw submissions, logframes, and JSON backups.\n\n8. Mobile App Sync\n- Firebase cloud synchronization across all devices.`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Project Management\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Automated Mapping\n4. Custom Reports & Scorecard\n5. Advanced Form Builder (GPS, Photos, Ratings)\n6. Field Data Submission\n7. Data Export Suite & Full System Backups\n8. Mobile App Sync (Firebase Firestore)`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Gabriel_MEL_System_User_Guidelines.txt';
+    a.download = 'Gabriel_MEL_System_Guidelines.txt';
     a.click();
   };
 
@@ -660,7 +662,7 @@ function UserGuidelinesView() {
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-sm text-slate-500">Comprehensive reference manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
+          <p className="text-sm text-slate-500">Official system manual for the Gabriel Monitoring, Evaluation and Learning (GMEL) System.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-slate-800">
@@ -675,14 +677,30 @@ function UserGuidelinesView() {
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-sm">
         <div className="border-b pb-4">
           <h1 className="text-2xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
-          <p className="text-indigo-600 text-xs font-bold mt-1">Founder &amp; Owner: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
+          <p className="text-indigo-600 text-xs font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
         </div>
 
-        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200 text-xs text-indigo-900">
-          <strong>System Origin:</strong> In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong>, representing the founder and owner of the system. It is officially designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>.
+        {/* FOUNDER BACKGROUND & EXPERIENCE BOX */}
+        <div className="bg-indigo-50/80 p-5 rounded-2xl border border-indigo-200 space-y-3">
+          <h3 className="text-sm font-extrabold text-indigo-900 uppercase flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-indigo-600" /> About the Founder &amp; System Background
+          </h3>
+          <p className="text-xs text-slate-700 leading-relaxed">
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), the founder and owner of the system. Officially designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform is meticulously engineered to reflect over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="bg-white p-3 rounded-xl border border-indigo-100 text-xs">
+              <span className="font-bold text-indigo-800 block">Academic Background</span>
+              <span className="text-slate-600">Bachelor&apos;s degree in Statistics and Mathematics &amp; Master&apos;s degree in Monitoring and Evaluation.</span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-indigo-100 text-xs">
+              <span className="font-bold text-indigo-800 block">Core Competencies &amp; Experience</span>
+              <span className="text-slate-600">Specializes in capacity building, project initiation, planning, implementation, Data Quality Assessments (DQAs), statistical analysis, learning, and donor reporting.</span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 pt-2">
           <h3 className="font-bold text-base text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
           <p>Located at the top of your screen, the persistent header allows you to switch projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives.</p>
 
