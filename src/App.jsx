@@ -45,8 +45,7 @@ const firebaseConfig = {
   projectId: "online-shop-dcbea",
   storageBucket: "online-shop-dcbea.firebasestorage.app",
   messagingSenderId: "113310368595",
-  appId: "1:113310368595:web:54144e4989d1aaae63d7a6",
-  measurementId: "G-7LR01FB938"
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
 };
 
 let db = null;
@@ -201,7 +200,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-base text-slate-300">Syncing $GMEL System$(url?id=5) with Firebase...</p>
+          <p className="text-base text-slate-300">Syncing [GMEL System](url?id=5) with Firebase...</p>
         </div>
       </div>
     );
@@ -864,7 +863,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
   
-  // Indicator state with disaggregation for General, Male, Female, Total
   const [newInd, setNewInd] = useState({ 
     level: 'Output', 
     title: '', 
@@ -875,12 +873,18 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
   const handleAddIndicator = () => {
     if (!newInd.title.trim()) return;
+    const baseTotal = (Number(newInd.baseline.general) || 0) + (Number(newInd.baseline.male) || 0) + (Number(newInd.baseline.female) || 0);
+    const targetTotal = (Number(newInd.target.general) || 0) + (Number(newInd.target.male) || 0) + (Number(newInd.target.female) || 0);
+
     const indicatorObj = { 
       ...newInd, 
+      baseline: { ...newInd.baseline, total: baseTotal || newInd.baseline.general },
+      target: { ...newInd.target, total: targetTotal || newInd.target.general },
       id: createId('ind'), 
       mappedFieldId: null, 
       calcType: 'SUM' 
     };
+
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     setShowAddModal(false);
     setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
@@ -900,6 +904,15 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
   const handleSaveIndicator = () => {
     if (!newInd.title.trim()) return;
+    const baseTotal = (Number(newInd.baseline.general) || 0) + (Number(newInd.baseline.male) || 0) + (Number(newInd.baseline.female) || 0);
+    const targetTotal = (Number(newInd.target.general) || 0) + (Number(newInd.target.male) || 0) + (Number(newInd.target.female) || 0);
+
+    const updatedData = {
+      ...newInd,
+      baseline: { ...newInd.baseline, total: baseTotal || newInd.baseline.general },
+      target: { ...newInd.target, total: targetTotal || newInd.target.general }
+    };
+
     if (!editingIndicatorId) {
       handleAddIndicator();
       return;
@@ -907,7 +920,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
     setProjects(prev => prev.map(p => p.id !== project.id ? p : {
       ...p,
-      indicators: p.indicators.map(ind => ind.id === editingIndicatorId ? { ...ind, ...newInd, title: newInd.title.trim() } : ind)
+      indicators: p.indicators.map(ind => ind.id === editingIndicatorId ? { ...ind, ...updatedData, title: updatedData.title.trim() } : ind)
     }));
     setEditingIndicatorId(null);
     setShowAddModal(false);
@@ -942,7 +955,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1000px]">
+        <table className="w-full text-left border-collapse min-w-[1050px]">
           <thead>
             <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b border-slate-200">
               <th className="p-4">Level</th>
@@ -973,15 +986,15 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                   
                   {/* Baseline Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">
-                    <div className="bg-slate-100 p-2 rounded-xl border border-slate-200 space-y-1">
+                    <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-slate-900">{baseline.general}</strong> {ind.unit}</div>
-                      <div className="text-xs text-slate-500">M: {baseline.male} | F: {baseline.female} | Tot: <strong>{baseline.total}</strong></div>
+                      <div className="text-xs text-slate-600">M: {baseline.male} | F: {baseline.female} | Tot: <strong className="text-slate-900">{baseline.total}</strong></div>
                     </div>
                   </td>
 
                   {/* Target Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
-                    <div className="bg-slate-100 p-2 rounded-xl border border-slate-200 space-y-1">
+                    <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-indigo-900">{target.general}</strong> {ind.unit}</div>
                       <div className="text-xs text-slate-600">M: {target.male} | F: {target.female} | Tot: <strong className="text-slate-900">{target.total}</strong></div>
                     </div>
@@ -989,9 +1002,9 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
                   {/* Actual Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top">
-                    <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
+                    <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
                       <div>Gen: <strong className="text-indigo-700">{actual.general}</strong> {ind.unit}</div>
-                      <div className="text-xs text-indigo-600">M: {actual.male} | F: {actual.female} | Tot: <strong className="font-extrabold">{actual.total}</strong></div>
+                      <div className="text-xs text-indigo-700">M: {actual.male} | F: {actual.female} | Tot: <strong className="font-extrabold">{actual.total}</strong></div>
                     </div>
                   </td>
 
@@ -1039,8 +1052,8 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
       </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-8 space-y-5 text-base">
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-8 space-y-5 text-base my-8">
             <h3 className="text-xl font-black text-slate-900 border-b pb-3">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add Disaggregated Indicator'}</h3>
             
             <div>
@@ -1055,11 +1068,9 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <input type="text" placeholder="e.g. Number of schools or households trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Unit of Measure</label>
-                <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base" />
-              </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Unit of Measure</label>
+              <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
             </div>
 
             {/* Disaggregated Baseline Inputs */}
