@@ -461,7 +461,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tab Navigation Menu */}
+        {/* Tab Navigation Menu (License & Activation moved to the very end after Print Forms) */}
         <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
@@ -472,8 +472,8 @@ export default function App() {
               { id: 'entry', label: 'Data Submission', icon: ListCheck },
               { id: 'export', label: 'Export Suite', icon: Download },
               { id: 'mobile', label: 'Mobile App Sync', icon: Smartphone },
-              { id: 'license', label: 'License & Activation', icon: KeyRound },
-              { id: 'print', label: 'Print Forms', icon: Printer }
+              { id: 'print', label: 'Print Forms', icon: Printer },
+              { id: 'license', label: 'License & Activation', icon: KeyRound }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -504,8 +504,8 @@ export default function App() {
         {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
         {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
-        {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
+        {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
       </main>
 
       <nav className="mobile-nav print:hidden" aria-label="Main navigation">
@@ -513,12 +513,12 @@ export default function App() {
           { id: 'dashboard', label: 'Home', icon: BarChart3 },
           { id: 'logframe', label: 'Indicators', icon: TrendingUp },
           { id: 'reports', label: 'Reports', icon: FileText },
-          { id: 'license', label: 'License', icon: KeyRound },
+          { id: 'print', label: 'Print', icon: Printer },
           { id: 'more', label: 'More', icon: MoreHorizontal }
         ].map(item => {
           const Icon = item.icon;
           const selected = item.id === 'more'
-            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'print'].includes(activeTab)
+            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'license'].includes(activeTab)
             : activeTab === item.id;
 
           return (
@@ -550,7 +550,7 @@ export default function App() {
             { id: 'builder', label: 'Form builder', icon: FileText },
             { id: 'export', label: 'Export data', icon: Download },
             { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
-            { id: 'print', label: 'Print forms', icon: Printer }
+            { id: 'license', label: 'License & Activation', icon: KeyRound }
           ].map(item => {
             const Icon = item.icon;
             return (
@@ -1106,7 +1106,7 @@ function LicenseActivationView({ license, setLicense }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20-%20GMEL%20One-Year%20Plan%20Request"
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan&body=Hello,%20I%20would%20like%20to%20request%20activation%20for%20the%20One-Year%20Plan%20after%20payment.%20Workspace%20Details:"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
@@ -1123,7 +1123,7 @@ function LicenseActivationView({ license, setLicense }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20-%20GMEL%20Lifetime%20License%20Request"
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License&body=Hello,%20I%20would%20like%20to%20request%20activation%20for%20the%20Lifetime%20License%20after%20payment.%20Workspace%20Details:"
               className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
