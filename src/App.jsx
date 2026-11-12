@@ -835,17 +835,49 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
     return segment;
   }).join(', ');
 
+  // Compute overall project health score
+  let totalPctSum = 0;
+  project.indicators.forEach(ind => {
+    const actualObj = getCalculatedActual(project, ind);
+    const actualVal = actualObj.total || actualObj.general || 0;
+    const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+    const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+    const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
+    totalPctSum += pct;
+  });
+  const avgPerformance = totalIndicators > 0 ? Math.round(totalPctSum / totalIndicators) : 0;
+  
+  let healthStatus = 'On Track 🚀';
+  let healthColor = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+  if (avgPerformance < 40) {
+    healthStatus = 'Needs Attention ⚠️';
+    healthColor = 'bg-amber-100 text-amber-800 border-amber-300';
+  } else if (avgPerformance >= 90) {
+    healthStatus = 'Target Achieved ⭐';
+    healthColor = 'bg-indigo-100 text-indigo-900 border-indigo-300';
+  }
+
+  // Parse budget number safely
+  const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 0;
+  // Estimate expenditure ratio based on submissions / indicators activity
+  const utilizationRate = Math.min(100, Math.round((project.submissions.length / (totalIndicators * 5 || 1)) * 100));
+
   return (
     <div className="space-y-6 text-base">
-      <div className="dashboard-heading flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="dashboard-heading flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
         <div>
           <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
           <h2 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h2>
           <p className="text-base text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="h-5 w-5" /> {project.location} · Reporting period: 2026</p>
         </div>
-        <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition">
-          <Edit2 className="h-5 w-5" /> Edit project
-        </button>
+        <div className="flex items-center gap-3">
+          <span className={`px-4 py-1.5 rounded-xl text-sm font-extrabold border ${healthColor}`}>
+            Health: {healthStatus} ({avgPerformance}%)
+          </span>
+          <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition">
+            <Edit2 className="h-5 w-5" /> Edit project
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
@@ -877,6 +909,104 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
             <h3 className="text-2xl font-black text-slate-900 mt-1">{project.submissions.length}</h3>
           </div>
           <Database className="h-10 w-10 text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Target vs. Calculated Progress
+            </h3>
+          </div>
+          <div className="space-y-5 pt-2">
+            {project.indicators.map(ind => {
+              const actualObj = getCalculatedActual(project, ind);
+              const actualVal = actualObj.total || actualObj.general || 0;
+              const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+              const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
+
+              return (
+                <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="flex justify-between items-start text-sm font-bold">
+                    <span className="text-slate-900 text-base font-bold">{ind.title}</span>
+                    <span className="bg-indigo-100 text-indigo-900 font-mono px-3 py-1 rounded-lg border border-indigo-200 text-sm">
+                      {actualVal} / {targetVal} {ind.unit} ({pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden flex border border-slate-300">
+                    <div className="bg-indigo-600 h-4 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, pct)}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-6 border-t border-slate-200 space-y-3">
+            <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <ListCheck className="h-5 w-5 text-indigo-600" /> Recent Field Activity Logs
+            </h4>
+            {project.submissions.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">No survey records submitted yet for this project.</p>
+            ) : (
+              <div className="space-y-2">
+                {project.submissions.slice(0, 3).map(sub => (
+                  <div key={sub.id} className="flex justify-between items-center bg-slate-50 px-4 py-3 rounded-xl border text-sm">
+                    <span className="font-mono text-indigo-700 font-bold">{sub.timestamp}</span>
+                    <span className="text-slate-600 truncate max-w-xs">ID: {sub.id}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* NEW: Financial Budget Utilization Ratio Card */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <DollarSign className="h-6 w-6 text-emerald-600" /> Budget Utilization Ratio
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-slate-600">Allocated Budget:</span>
+                <span className="text-slate-900">{project.budget || '$0'}</span>
+              </div>
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-slate-600">Estimated Execution:</span>
+                <span className="text-emerald-700">{utilizationRate}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden border">
+                <div className="bg-emerald-600 h-3 rounded-full transition-all" style={{ width: `${utilizationRate}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <PieChart className="h-6 w-6 text-indigo-600" /> Indicator Level Breakdown
+            </h3>
+            <div className="py-4 flex justify-center">
+              <div className="w-32 h-32 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
+                <div className="absolute w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center shadow">
+                  <strong className="text-lg font-black text-slate-900">{totalIndicators}</strong>
+                  <span className="text-xs uppercase font-extrabold text-slate-500">indicators</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              {levels.map(({ name: lvl, color }) => {
+                const count = project.indicators.filter(i => i.level === lvl).length;
+                return (
+                  <div key={lvl} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span className="font-bold text-slate-800 flex items-center gap-2"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: color }} />{lvl}</span>
+                    <span className="font-mono bg-white px-2.5 py-0.5 rounded-lg border font-extrabold">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
