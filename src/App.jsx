@@ -31,7 +31,6 @@ import {
   KeyRound,
   ShieldCheck,
   AlertTriangle,
-  BellRing,
   Mail,
   BookOpen
 } from 'lucide-react';
@@ -45,7 +44,8 @@ const firebaseConfig = {
   projectId: "online-shop-dcbea",
   storageBucket: "online-shop-dcbea.firebasestorage.app",
   messagingSenderId: "113310368595",
-  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6",
+  measurementId: "G-7LR01FB938"
 };
 
 let db = null;
@@ -187,7 +187,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-sm text-slate-400">Syncing GMEL Workspace with Firebase...</p>
+          <p className="text-sm text-slate-400">Syncing [GMEL System](url?id=5) with Firebase...</p>
         </div>
       </div>
     );
@@ -274,6 +274,34 @@ export default function App() {
               <Edit2 className="h-4 w-4 text-amber-400" />
             </button>
 
+            {/* QUICK HEADER ACTIONS */}
+            <button 
+              onClick={() => setActiveTab('mobile')}
+              title="Mobile App Sync"
+              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'mobile' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            >
+              <Smartphone className="h-4 w-4" />
+              <span className="hidden md:inline">Sync</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('guidelines')}
+              title="User Guidelines"
+              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'guidelines' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden md:inline">Guide</span>
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('license')}
+              title="License & Activation"
+              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'license' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            >
+              <KeyRound className="h-4 w-4" />
+              <span className="hidden md:inline">License</span>
+            </button>
+
             <button 
               onClick={() => setShowAddProjectModal(true)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-md"
@@ -284,7 +312,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tab Navigation Menu */}
+        {/* Core Operational Tab Navigation Menu */}
         <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
@@ -294,10 +322,7 @@ export default function App() {
               { id: 'builder', label: 'Form Builder', icon: FileText },
               { id: 'entry', label: 'Data Submission', icon: ListCheck },
               { id: 'export', label: 'Export Suite', icon: Download },
-              { id: 'mobile', label: 'Mobile App Sync', icon: Smartphone },
-              { id: 'print', label: 'Print Forms', icon: Printer },
-              { id: 'guidelines', label: 'User Guidelines', icon: BookOpen },
-              { id: 'license', label: 'License & Activation', icon: KeyRound }
+              { id: 'print', label: 'Print Forms', icon: Printer }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -616,15 +641,15 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
-// USER GUIDELINES COMPONENT
+// USER GUIDELINES COMPONENT (WITH FOUNDER GABRIEL INDICATION)
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GMEL MONITORING & EVALUATION (M&E) SYSTEM: END-USER GUIDELINE\n\n1. Top Navigation & Project Management Bar\n- Project Switcher: Toggle between projects instantly.\n- New Project: Create initiatives with budgets and regions.\n\n2. Dashboard & Visuals\n- Displays KPI metrics, progress bars, and indicator breakdowns.\n\n3. Logical Framework Matrix (Logframe)\n- Manage indicators and map them automatically to survey fields.\n\n4. Custom Reports & Scorecard\n- Donor-ready executive performance scorecards with print support.\n\n5. Advanced Form Builder\n- Design custom forms with GPS, photos, notes, and ratings.\n\n6. Field Data Submission\n- Record survey responses and capture precise GPS coordinates.\n\n7. Data Export Suite\n- Export raw submissions, logframes, and JSON backups.\n\n8. Mobile App Sync\n- Firebase cloud synchronization across all devices.`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder / Owner: Gabriel Godiel Mashambo\n\n1. Top Navigation & Header Quick Controls\n- Project Switcher: Toggle between projects instantly.\n- Sync, Guide, License: Quick access buttons on the top bar.\n- New Project: Create initiatives with budgets and regions.\n\n2. Dashboard & Visuals\n- Displays KPI metrics, progress bars, and indicator breakdowns.\n\n3. Logical Framework Matrix (Logframe)\n- Manage indicators and map them automatically to survey fields.\n\n4. Custom Reports & Scorecard\n- Donor-ready executive performance scorecards with print support.\n\n5. Advanced Form Builder\n- Design custom forms with GPS, photos, notes, and ratings.\n\n6. Field Data Submission\n- Record survey responses and capture precise GPS coordinates.\n\n7. Data Export Suite\n- Export raw submissions, logframes, and JSON backups.\n\n8. Mobile App Sync\n- Firebase cloud synchronization across all devices.`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'GMEL_System_User_Guidelines.txt';
+    a.download = 'Gabriel_MEL_System_User_Guidelines.txt';
     a.click();
   };
 
@@ -635,7 +660,7 @@ function UserGuidelinesView() {
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-sm text-slate-500">Comprehensive feature reference for project managers and enumerators.</p>
+          <p className="text-sm text-slate-500">Comprehensive reference manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-slate-800">
@@ -649,13 +674,17 @@ function UserGuidelinesView() {
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-sm">
         <div className="border-b pb-4">
-          <h1 className="text-2xl font-black text-slate-900">GMEL M&amp;E System User Manual</h1>
-          <p className="text-slate-500 text-xs mt-1">Official Documentation · EnrichData Tanzania</p>
+          <h1 className="text-2xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
+          <p className="text-indigo-600 text-xs font-bold mt-1">Founder &amp; Owner: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
+        </div>
+
+        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200 text-xs text-indigo-900">
+          <strong>System Origin:</strong> In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong>, representing the founder and owner of the system. It is officially designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>.
         </div>
 
         <div className="space-y-4">
-          <h3 className="font-bold text-base text-indigo-700">1. Top Navigation &amp; Project Management Bar</h3>
-          <p>Located at the top of your screen, this toolbar enables you to switch between active development programs or create new initiatives. Changing projects updates all dashboards, forms, indicators, and submissions instantly.</p>
+          <h3 className="font-bold text-base text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
+          <p>Located at the top of your screen, the persistent header allows you to switch projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives.</p>
 
           <h3 className="font-bold text-base text-indigo-700">2. Dashboard &amp; Visuals</h3>
           <p>Serves as your executive command center. View KPI metrics including your Project Code, donor funding, active indicator counts, and total survey submissions alongside visual progress bars and level breakdowns.</p>
@@ -701,7 +730,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
     <div className="space-y-6">
       <div className="dashboard-heading flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <div className="text-xs font-bold text-indigo-600 uppercase">MONITORING &amp; EVALUATION WORKSPACE</div>
+          <div className="text-xs font-bold text-indigo-600 uppercase">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
           <h2 className="text-xl font-black text-slate-900 mt-0.5">{project.name}</h2>
           <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><MapPin className="h-4 w-4" /> {project.location} · Reporting period: 2026</p>
         </div>
