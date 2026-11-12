@@ -30,7 +30,8 @@ import {
   CheckCircle2,
   KeyRound,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  BellRing
 } from 'lucide-react';
 
 // ==========================================
@@ -965,7 +966,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   );
 }
 
-// LICENSE & ACTIVATION COMPONENT (HIDDEN PAID CODES & SECURED DEMO)
+// LICENSE & ACTIVATION COMPONENT WITH TIERED EXPIRATION ALERTS (30d, 10d, 2d)
 function LicenseActivationView({ license, setLicense }) {
   const [inputCode, setInputCode] = useState('');
 
@@ -1013,7 +1014,45 @@ function LicenseActivationView({ license, setLicense }) {
   };
 
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
-  const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : 'Lifetime';
+  const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+
+  // Determine Alert Banner Tier based on days remaining
+  let alertBanner = null;
+  if (license.expiresAt) {
+    if (isExpired) {
+      alertBanner = {
+        bg: 'bg-red-50 border-red-300 text-red-900',
+        icon: AlertTriangle,
+        iconColor: 'text-red-600',
+        title: 'License Expired',
+        message: 'Your system license has expired. Please enter a valid renewal code to restore full functionality.'
+      };
+    } else if (daysRemaining <= 2) {
+      alertBanner = {
+        bg: 'bg-red-50 border-red-300 text-red-900',
+        icon: BellRing,
+        iconColor: 'text-red-600',
+        title: '🚨 Urgent Alert (Level 1: 2 Days or Less Remaining)',
+        message: `Your license expires in ${daysRemaining} day(s). Renew immediately to avoid system lockout.`
+      };
+    } else if (daysRemaining <= 10) {
+      alertBanner = {
+        bg: 'bg-amber-50 border-amber-300 text-amber-900',
+        icon: AlertTriangle,
+        iconColor: 'text-amber-600',
+        title: '⚠️ Expiration Warning (Level 2: 10 Days Remaining)',
+        message: `Your license will expire in ${daysRemaining} days. Please arrange your renewal payment.`
+      };
+    } else if (daysRemaining <= 30) {
+      alertBanner = {
+        bg: 'bg-blue-50 border-blue-300 text-blue-900',
+        icon: BellRing,
+        iconColor: 'text-blue-600',
+        title: 'ℹ️ Renewal Notice (Level 2: 1 Month Remaining)',
+        message: `Your license is scheduled to expire in ${daysRemaining} days (1 month notice).`
+      };
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -1023,6 +1062,17 @@ function LicenseActivationView({ license, setLicense }) {
         </h2>
         <p className="text-sm text-slate-500">Manage your subscription tier and system activation keys.</p>
       </div>
+
+      {/* Tiered Expiration Alert Banner */}
+      {alertBanner && (
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 shadow-sm ${alertBanner.bg}`}>
+          <alertBanner.icon className={`h-6 w-6 shrink-0 mt-0.5 ${alertBanner.iconColor}`} />
+          <div>
+            <h4 className="font-bold text-sm">{alertBanner.title}</h4>
+            <p className="text-xs mt-0.5">{alertBanner.message}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
