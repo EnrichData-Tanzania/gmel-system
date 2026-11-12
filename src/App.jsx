@@ -113,7 +113,9 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data.projects) setProjects(data.projects);
-          if (data.license) setLicense(data.license);
+          if (data.license && data.license.code) {
+            setLicense(data.license);
+          }
         }
       } catch (err) {
         console.error('Error loading from Firebase, using defaults:', err);
@@ -175,232 +177,19 @@ export default function App() {
 
   // Check if license is valid or expired
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
-  const hasValidLicense = license.code && !isExpired;
+  const hasValidLicense = Boolean(license.code && !isExpired);
 
-  // Dynamic Indicator Calculation Engine with Percentage Support
-  const getCalculatedActual = (project, indicator) => {
-    if (!indicator || !indicator.mappedFieldId) return indicator?.actual || 0;
-
-    let total = 0;
-    let count = 0;
-    let max = 0;
-    let matchingSubmissions = 0;
-    const totalSubmissions = (project.submissions || []).length;
-
-    (project.submissions || []).forEach(sub => {
-      const val = sub.data[indicator.mappedFieldId];
-      const numVal = parseFloat(val);
-      
-      if (!isNaN(numVal)) {
-        total += numVal;
-        count += 1;
-        if (numVal > max) max = numVal;
-      }
-
-      if (val !== undefined && val !== null && String(val).trim() !== '') {
-        matchingSubmissions += 1;
-      }
-    });
-
-    if (indicator.calcType === 'SUM') return indicator.baseline + total;
-    if (indicator.calcType === 'AVG') return count > 0 ? (total / count).toFixed(1) : indicator.baseline;
-    if (indicator.calcType === 'COUNT') return count;
-    if (indicator.calcType === 'MAX') return max;
-    if (indicator.calcType === 'PERCENTAGE') {
-      return totalSubmissions > 0 ? ((matchingSubmissions / totalSubmissions) * 100).toFixed(1) : indicator.baseline;
-    }
-    return indicator.actual;
-  };
-
-  // Add New Project Handler
-  const handleCreateProject = (e) => {
-    e.preventDefault();
-    if (!newProj.name || !newProj.code) {
-      alert('Please fill in at least the Project Name and Project Code.');
-      return;
-    }
-
-    const createdProject = {
-      id: createId('proj'),
-      name: newProj.name,
-      code: newProj.code,
-      donor: newProj.donor || 'N/A',
-      budget: newProj.budget || '$0',
-      location: newProj.location || 'Unspecified',
-      indicators: [],
-      forms: [],
-      submissions: []
-    };
-
-    setProjects([...projects, createdProject]);
-    setActiveProjectId(createdProject.id);
-    setShowAddProjectModal(false);
-    setNewProj({ name: '', code: '', donor: '', budget: '', location: '' });
-  };
-
-  const openEditProject = () => {
-    setEditProj({
-      name: currentProject.name,
-      code: currentProject.code,
-      donor: currentProject.donor,
-      budget: currentProject.budget,
-      location: currentProject.location
-    });
-    setShowEditProjectModal(true);
-  };
-
-  const handleUpdateProject = (e) => {
-    e.preventDefault();
-    setProjects(prev => prev.map(p => {
-      if (p.id !== currentProject.id) return p;
-      return {
-        ...p,
-        name: editProj.name,
-        code: editProj.code,
-        donor: editProj.donor,
-        budget: editProj.budget,
-        location: editProj.location
-      };
-    }));
-    setShowEditProjectModal(false);
-  };
-
-  const handleDeleteProject = () => {
-    if (projects.length <= 1) {
-      alert('You must keep at least one active project in the system.');
-      return;
-    }
-    if (window.confirm(`Are you sure you want to permanently delete project "${currentProject.name}"?`)) {
-      const remainingProjects = projects.filter(p => p.id !== currentProject.id);
-      setProjects(remainingProjects);
-      setActiveProjectId(remainingProjects[0].id);
-      setShowEditProjectModal(false);
-    }
-  };
-
-  const handleRenameForm = (formId, newTitle, newDesc) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id !== currentProject.id) return p;
-      return {
-        ...p,
-        forms: p.forms.map(f => f.id === formId ? { ...f, title: newTitle, description: newDesc } : f)
-      };
-    }));
-  };
-
-  const handleDeleteForm = (formId) => {
-    if (window.confirm('Are you sure you want to delete this form? Linked indicators will reset to unmapped.')) {
-      setProjects(prev => prev.map(p => {
-        if (p.id !== currentProject.id) return p;
-        return {
-          ...p,
-          forms: p.forms.filter(f => f.id !== formId),
-          indicators: p.indicators.map(ind => {
-            const isFieldInForm = p.forms.find(f => f.id === formId)?.fields.some(field => field.id === ind.mappedFieldId);
-            return isFieldInForm ? { ...ind, mappedFieldId: null } : ind;
-          })
-        };
-      }));
-    }
-  };
-
-  const handleDeleteSubmission = (submissionId) => {
-    if (window.confirm('Are you sure you want to delete this submission entry? Indicators will recalculate.')) {
-      setProjects(prev => prev.map(p => {
-        if (p.id !== currentProject.id) return p;
-        return {
-          ...p,
-          submissions: p.submissions.filter(sub => sub.id !== submissionId)
-        };
-      }));
-    }
-  };
-
-  const handleClearAllSubmissions = () => {
-    if (window.confirm(`Delete ALL (${currentProject.submissions.length}) submissions for ${currentProject.name}?`)) {
-      setProjects(prev => prev.map(p => {
-        if (p.id !== currentProject.id) return p;
-        return { ...p, submissions: [] };
-      }));
-    }
-  };
-
-  const exportToCSV = (filename, rows) => {
-    const processRow = row => row.map(val => {
-      const value = String(val ?? '');
-      const spreadsheetSafeValue = /^\s*[=+\-@]/.test(value) ? `'${value}` : value;
-      return `"${spreadsheetSafeValue.replace(/"/g, '""')}"`;
-    }).join(',');
-    const csvContent = `\uFEFF${rows.map(processRow).join('\r\n')}`;
-    const objectUrl = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.setAttribute('href', objectUrl);
-    link.setAttribute('download', `${filename}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-  };
-
-  const exportSubmissionsCSV = () => {
-    if (currentProject.submissions.length === 0) {
-      alert('No submission data available to export.');
-      return;
-    }
-    const fields = currentProject.forms.flatMap(form => form.fields.map(field => ({
-      formId: form.id,
-      fieldId: field.id,
-      header: `${form.title} — ${field.label}`
-    })));
-    const headers = ['Submission ID', 'Timestamp', 'Form', ...fields.map(field => field.header)];
-    const rows = [headers];
-    currentProject.submissions.forEach(sub => {
-      const form = currentProject.forms.find(item => item.id === sub.formId);
-      rows.push([
-        sub.id,
-        sub.timestamp,
-        form?.title || sub.formId,
-        ...fields.map(field => field.formId === sub.formId ? sub.data[field.fieldId] || '' : '')
-      ]);
-    });
-    exportToCSV(`${currentProject.code}_Submissions`, rows);
-  };
-
-  const exportLogframeCSV = () => {
-    const headers = ['Hierarchy Level', 'Indicator Statement', 'Baseline', 'Target', 'Calculated Actual', 'Unit', 'Mapping Method'];
-    const rows = [headers];
-    currentProject.indicators.forEach(ind => {
-      rows.push([ind.level, ind.title, ind.baseline, ind.target, getCalculatedActual(currentProject, ind), ind.unit, ind.calcType || 'Manual']);
-    });
-    exportToCSV(`${currentProject.code}_Logframe_Indicators`, rows);
-  };
-
-  const exportSystemJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projects, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `GMEL_System_Backup_${new Date().toISOString().substring(0,10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const handleFormSubmit = (formId, formData) => {
-    const newSubmission = {
-      id: createId('sub'),
-      formId,
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      data: formData
-    };
-
-    setProjects(prevProjects =>
-      prevProjects.map(p => {
-        if (p.id !== currentProject.id) return p;
-        return { ...p, submissions: [newSubmission, ...p.submissions] };
-      })
+  // If data is still loading from cloud, show a clean loading state to prevent flashing
+  if (!isLoadedFromCloud) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="text-sm text-slate-400">Loading GMEL System Workspace...</p>
+        </div>
+      </div>
     );
-    alert('Data record submitted successfully!');
-  };
+  }
 
   // IF NO VALID LICENSE, LOCK APP AND SHOW ACTIVATION / PAYMENT GATEWAY SCREEN
   if (!hasValidLicense) {
