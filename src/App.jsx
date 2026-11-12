@@ -47,8 +47,13 @@ const firebaseConfig = {
   appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+let db = null;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase init note:", e);
+}
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
@@ -107,6 +112,10 @@ export default function App() {
   useEffect(() => {
     async function fetchCloudData() {
       try {
+        if (!db) {
+          setIsLoadedFromCloud(true);
+          return;
+        }
         const docRef = doc(db, 'gmel_systems', 'main_workspace');
         const docSnap = await getDoc(docRef);
 
@@ -128,7 +137,7 @@ export default function App() {
 
   // 2. Sync state changes & license to Firebase Firestore automatically
   useEffect(() => {
-    if (!isLoadedFromCloud) return;
+    if (!isLoadedFromCloud || !db) return;
 
     async function saveCloudData() {
       try {
@@ -179,7 +188,7 @@ export default function App() {
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
   const hasValidLicense = Boolean(license.code && !isExpired);
 
-  // If data is still loading from cloud, show a clean loading state to prevent flashing
+  // If data is still loading from cloud, show loading screen
   if (!isLoadedFromCloud) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
