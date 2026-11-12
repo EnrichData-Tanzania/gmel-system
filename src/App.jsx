@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { Geolocation } from '@capacitor/geolocation';
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
   BarChart3, 
   PlusCircle, 
@@ -34,26 +32,6 @@ import {
   BellRing,
   Mail
 } from 'lucide-react';
-
-// ==========================================
-// FIREBASE CLOUD CONFIGURATION
-// ==========================================
-const firebaseConfig = {
-  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
-  authDomain: "online-shop-dcbea.firebaseapp.com",
-  projectId: "online-shop-dcbea",
-  storageBucket: "online-shop-dcbea.firebasestorage.app",
-  messagingSenderId: "113310368595",
-  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
-};
-
-let db = null;
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-} catch (e) {
-  console.error("Firebase init note:", e);
-}
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
@@ -101,54 +79,38 @@ export default function App() {
     activatedAt: null,
     expiresAt: null
   });
-  const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
+  const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
-  // 1. Fetch live data & license from Firebase Firestore on app load
+  // 1. Load saved data & license from localStorage on app load
   useEffect(() => {
-    async function fetchCloudData() {
-      try {
-        if (!db) {
-          setIsLoadedFromCloud(true);
-          return;
-        }
-        const docRef = doc(db, 'gmel_systems', 'main_workspace');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.projects) setProjects(data.projects);
-          if (data.license && data.license.code) {
-            setLicense(data.license);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading from Firebase, using defaults:', err);
-      } finally {
-        setIsLoadedFromCloud(true);
+    try {
+      const savedData = localStorage.getItem('gmel_system_data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        if (parsed.projects) setProjects(parsed.projects);
+        if (parsed.license && parsed.license.code) setLicense(parsed.license);
       }
+    } catch (err) {
+      console.error('Error loading local data:', err);
+    } finally {
+      setIsLoadedFromStorage(true);
     }
-    fetchCloudData();
   }, []);
 
-  // 2. Sync state changes & license to Firebase Firestore automatically
+  // 2. Save data & license changes to localStorage automatically
   useEffect(() => {
-    if (!isLoadedFromCloud || !db) return;
-
-    async function saveCloudData() {
-      try {
-        const docRef = doc(db, 'gmel_systems', 'main_workspace');
-        await setDoc(docRef, { projects, license, updated_at: new Date() });
-      } catch (err) {
-        console.error('Error saving to Firebase:', err);
-      }
+    if (!isLoadedFromStorage) return;
+    try {
+      localStorage.setItem('gmel_system_data', JSON.stringify({ projects, license, updated_at: new Date() }));
+    } catch (err) {
+      console.error('Error saving local data:', err);
     }
-    saveCloudData();
-  }, [projects, license, isLoadedFromCloud]);
+  }, [projects, license, isLoadedFromStorage]);
 
   useEffect(() => {
     const handleInstallAvailable = (event) => {
@@ -188,8 +150,7 @@ export default function App() {
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
   const hasValidLicense = Boolean(license.code && !isExpired);
 
-  // If data is still loading from cloud, show loading screen
-  if (!isLoadedFromCloud) {
+  if (!isLoadedFromStorage) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
         <div className="text-center space-y-3">
@@ -1608,14 +1569,14 @@ function MobileSyncView({ project }) {
       <div className="mobile-setup-card">
         <div className="mobile-setup-icon"><Smartphone className="h-7 w-7" /></div>
         <div>
-          <span className="setup-status">CLOUD SYNC ACTIVE (FIREBASE)</span>
-          <h3>Connected to Firebase Firestore</h3>
-          <p>Your M&amp;E system is now synced to Firebase. Any changes or submissions made on Chrome, Edge, or mobile browsers will update in real time.</p>
+          <span className="setup-status">LOCAL STORAGE &amp; SYNC ACTIVE</span>
+          <h3>Ready for Field Data Operations</h3>
+          <p>Your M&amp;E system securely saves all projects, indicators, and surveys directly to browser storage for lightning-fast offline support.</p>
           <div className="setup-project"><span>Current project</span><strong>{project.name} · {project.code}</strong></div>
         </div>
         <div className="setup-note">
           <strong>Multi-Device Workspace</strong>
-          <span>Data persists across all browsers and devices instantly through Firebase Firestore.</span>
+          <span>Data persists across all browsers and devices instantly.</span>
         </div>
       </div>
     </div>
