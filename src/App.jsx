@@ -31,19 +31,20 @@ import {
   KeyRound,
   ShieldCheck,
   AlertTriangle,
-  BellRing
+  BellRing,
+  Mail
 } from 'lucide-react';
 
 // ==========================================
 // FIREBASE CLOUD CONFIGURATION
 // ==========================================
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-  projectId: "YOUR_FIREBASE_PROJECT_ID",
-  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
+  authDomain: "online-shop-dcbea.firebaseapp.com",
+  projectId: "online-shop-dcbea",
+  storageBucket: "online-shop-dcbea.firebasestorage.app",
+  messagingSenderId: "113310368595",
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -966,13 +967,12 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   );
 }
 
-// LICENSE & ACTIVATION COMPONENT WITH TIERED EXPIRATION ALERTS (30d, 10d, 2d)
+// LICENSE & ACTIVATION COMPONENT WITH ONE-CLICK BUTTONS & EMAIL REQUESTS
 function LicenseActivationView({ license, setLicense }) {
   const [inputCode, setInputCode] = useState('');
 
-  const handleActivate = (e) => {
-    e.preventDefault();
-    const code = inputCode.trim().toUpperCase();
+  const activateCode = (codeToActivate) => {
+    const code = codeToActivate.trim().toUpperCase();
     let newLicenseData = null;
 
     if (code === 'DEMO-5DAYS') {
@@ -1004,13 +1004,18 @@ function LicenseActivationView({ license, setLicense }) {
         expiresAt: null
       };
     } else {
-      alert('Invalid activation code. Please enter a valid code or contact support after payment.');
+      alert('Invalid activation code. Please enter a valid code or request one after payment.');
       return;
     }
 
     setLicense(newLicenseData);
     setInputCode('');
     alert(`Activation successful! Tier: ${newLicenseData.level}`);
+  };
+
+  const handleActivate = (e) => {
+    e.preventDefault();
+    activateCode(inputCode);
   };
 
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
@@ -1075,25 +1080,55 @@ function LicenseActivationView({ license, setLicense }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
-          <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
-          <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
-          <p className="text-xs text-slate-600 mt-2">Trial code for testing features.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-indigo-700">Code: DEMO-5DAYS (free)</div>
+        {/* Level 1: One-Click Demo Activation */}
+        <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+          <div>
+            <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
+            <p className="text-xs text-slate-600 mt-2">Trial code for testing features.</p>
+          </div>
+          <div className="mt-4 pt-3 border-t">
+            <button 
+              onClick={() => activateCode('DEMO-5DAYS')}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5"
+            >
+              🚀 Activate Free Demo
+            </button>
+          </div>
         </div>
 
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200">
-          <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
-          <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
-          <p className="text-xs text-slate-600 mt-2">Full access for 365 days.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-400 italic">🔒 Issued after payment confirmation</div>
+        {/* Level 2: Email Request for Payment */}
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
+            <p className="text-xs text-slate-600 mt-2">Full access for 365 days.</p>
+          </div>
+          <div className="mt-4 pt-3 border-t">
+            <a 
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20-%20GMEL%20One-Year%20Plan%20Request"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
+            >
+              <Mail className="h-4 w-4" /> Request via Email
+            </a>
+          </div>
         </div>
 
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200">
-          <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
-          <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
-          <p className="text-xs text-slate-600 mt-2">Permanent license, never expires.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-400 italic">🔒 Issued after payment confirmation</div>
+        {/* Level 3: Email Request for Payment */}
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+            <p className="text-xs text-slate-600 mt-2">Permanent license, never expires.</p>
+          </div>
+          <div className="mt-4 pt-3 border-t">
+            <a 
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20-%20GMEL%20Lifetime%20License%20Request"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
+            >
+              <Mail className="h-4 w-4" /> Request via Email
+            </a>
+          </div>
         </div>
       </div>
 
@@ -1123,12 +1158,12 @@ function LicenseActivationView({ license, setLicense }) {
         </div>
 
         <form onSubmit={handleActivate} className="space-y-3 pt-2">
-          <label className="block text-xs font-bold text-slate-700">Enter Activation Code</label>
+          <label className="block text-xs font-bold text-slate-700">Have an Activation Code? Enter it here:</label>
           <div className="flex gap-2">
             <input 
               type="text" 
               required
-              placeholder="Enter your activation key..."
+              placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
               className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm"
