@@ -268,17 +268,29 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
-              <Shield className="h-4 w-4 text-indigo-400" />
-              <select 
-                value={userRole} 
-                onChange={(e) => setUserRole(e.target.value)}
-                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
-              >
-                <option value="Administrator" className="bg-slate-800">Role: Admin</option>
-                <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
-                <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
-              </select>
-            </div>
+  <Shield className="h-4 w-4 text-indigo-400" />
+  <select 
+    value={userRole} 
+    onChange={(e) => {
+      const selected = e.target.value;
+      if (selected === 'Administrator') {
+        const pin = prompt('Enter Admin Password / PIN:');
+        if (pin === 'GMEL2026Admin!') { // Replace with a secure secret or Firebase auth check
+          setUserRole('Administrator');
+        } else {
+          alert('Incorrect Admin PIN!');
+        }
+      } else {
+        setUserRole(selected);
+      }
+    }}
+    className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+  >
+    <option value="Administrator" className="bg-slate-800">Role: Admin</option>
+    <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
+    <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
+  </select>
+</div>
 
             <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
               <Building2 className="h-5 w-5 text-indigo-400" />
