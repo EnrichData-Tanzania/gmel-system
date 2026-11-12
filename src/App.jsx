@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { Geolocation } from '@capacitor/geolocation';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -33,19 +33,25 @@ import {
   AlertTriangle,
   Mail,
   BookOpen,
-  GraduationCap
+  GraduationCap,
+  CheckSquare,
+  Shield,
+  Wifi,
+  WifiOff,
+  Map as MapIcon,
+  FileDown
 } from 'lucide-react';
 
 // ==========================================
 // FIREBASE CLOUD CONFIGURATION
 // ==========================================
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-  projectId: "YOUR_FIREBASE_PROJECT_ID",
-  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
+  authDomain: "online-shop-dcbea.firebaseapp.com",
+  projectId: "online-shop-dcbea",
+  storageBucket: "online-shop-dcbea.firebasestorage.app",
+  messagingSenderId: "113310368595",
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
 };
 
 let db = null;
@@ -58,7 +64,7 @@ try {
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
-// Default Initial M&E Projects with Fully Disaggregated Baseline & Target Objects
+// Default Initial M&E Projects
 const initialProjects = [
   {
     id: 'proj-1',
@@ -114,6 +120,10 @@ export default function App() {
     activatedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
   });
+  
+  // New System States: RBAC & Offline Status
+  const [userRole, setUserRole] = useState('Administrator'); // 'Administrator', 'M&E Officer', 'Enumerator'
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
@@ -121,10 +131,29 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
+  // Network listener for offline-first caching
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     async function fetchCloudData() {
       try {
-        if (!db) {
+        if (!db || !navigator.onLine) {
+          // Fallback to local storage if offline
+          const localCache = localStorage.getItem('gmel_offline_cache');
+          if (localCache) {
+            const parsed = JSON.parse(localCache);
+            if (parsed.projects) setProjects(parsed.projects);
+            if (parsed.license) setLicense(parsed.license);
+          }
           setIsLoadedFromCloud(true);
           return;
         }
@@ -134,12 +163,10 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data.projects) setProjects(data.projects);
-          if (data.license && data.license.code) {
-            setLicense(data.license);
-          }
+          if (data.license && data.license.code) setLicense(data.license);
         }
       } catch (err) {
-        console.error('Error loading from Firebase:', err);
+        console.error('Error loading data:', err);
       } finally {
         setIsLoadedFromCloud(true);
       }
@@ -147,8 +174,14 @@ export default function App() {
     fetchCloudData();
   }, []);
 
+  // Save to Firebase and local storage cache
   useEffect(() => {
-    if (!isLoadedFromCloud || !db) return;
+    if (!isLoadedFromCloud) return;
+
+    // Always update local storage cache for offline resilience
+    localStorage.setItem('gmel_offline_cache', JSON.stringify({ projects, license }));
+
+    if (!db || !isOnline) return;
 
     async function saveCloudData() {
       try {
@@ -159,22 +192,15 @@ export default function App() {
       }
     }
     saveCloudData();
-  }, [projects, license, isLoadedFromCloud]);
+  }, [projects, license, isLoadedFromCloud, isOnline]);
 
   useEffect(() => {
     const handleInstallAvailable = (event) => {
       event.preventDefault();
       setInstallPrompt(event);
     };
-
-    const handleInstalled = () => setInstallPrompt(null);
-
     window.addEventListener('beforeinstallprompt', handleInstallAvailable);
-    window.addEventListener('appinstalled', handleInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
-      window.removeEventListener('appinstalled', handleInstalled);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
   }, []);
 
   const handleInstallApp = async () => {
@@ -200,7 +226,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-base text-slate-300">Syncing GMEL System with Firebase...</p>
+          <p className="text-base text-slate-300">Loading GMEL System Workspace...</p>
         </div>
       </div>
     );
@@ -239,6 +265,26 @@ export default function App() {
           </div>
 
           <div className="project-toolbar flex items-center space-x-3 sm:space-x-4">
+            {/* Online / Offline Indicator Badge */}
+            <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${isOnline ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-amber-950 text-amber-300 border-amber-800'}`}>
+              {isOnline ? <Wifi className="h-4 w-4 text-emerald-400" /> : <WifiOff className="h-4 w-4 text-amber-400" />}
+              <span>{isOnline ? 'Online (Synced)' : 'Offline (Cached)'}</span>
+            </div>
+
+            {/* RBAC Selector */}
+            <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
+              <Shield className="h-4 w-4 text-indigo-400" />
+              <select 
+                value={userRole} 
+                onChange={(e) => setUserRole(e.target.value)}
+                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              >
+                <option value="Administrator" className="bg-slate-800">Role: Admin</option>
+                <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
+                <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
+              </select>
+            </div>
+
             <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
               <Building2 className="h-5 w-5 text-indigo-400" />
               <label htmlFor="project-select" className="text-sm text-slate-300 font-semibold">Project:</label>
@@ -246,7 +292,7 @@ export default function App() {
                 id="project-select"
                 value={activeProjectId} 
                 onChange={(e) => setActiveProjectId(e.target.value)}
-                className="bg-transparent text-base font-bold text-white focus:outline-none cursor-pointer max-w-[170px] sm:max-w-[240px] truncate"
+                className="bg-transparent text-base font-bold text-white focus:outline-none cursor-pointer max-w-[140px] sm:max-w-[200px] truncate"
               >
                 {projects.map(p => (
                   <option key={p.id} value={p.id} className="bg-slate-800 text-white">{p.name} ({p.code})</option>
@@ -258,8 +304,6 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleInstallApp}
-                aria-label="Install G-MEL app"
-                title="Install G-MEL app"
                 className="install-app-button bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 transition"
               >
                 <Download className="h-5 w-5" />
@@ -267,26 +311,26 @@ export default function App() {
               </button>
             )}
 
-            <button 
-              onClick={() => {
-                setEditProj({
-                  name: currentProject.name,
-                  code: currentProject.code,
-                  donor: currentProject.donor,
-                  budget: currentProject.budget,
-                  location: currentProject.location
-                });
-                setShowEditProjectModal(true);
-              }}
-              title="Rename or Delete Current Project"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2.5 rounded-xl font-bold text-sm flex items-center gap-1 transition"
-            >
-              <Edit2 className="h-5 w-5 text-amber-400" />
-            </button>
+            {userRole === 'Administrator' && (
+              <button 
+                onClick={() => {
+                  setEditProj({
+                    name: currentProject.name,
+                    code: currentProject.code,
+                    donor: currentProject.donor,
+                    budget: currentProject.budget,
+                    location: currentProject.location
+                  });
+                  setShowEditProjectModal(true);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2.5 rounded-xl font-bold text-sm flex items-center gap-1 transition"
+              >
+                <Edit2 className="h-5 w-5 text-amber-400" />
+              </button>
+            )}
 
             <button 
               onClick={() => setActiveTab('mobile')}
-              title="Mobile App Sync"
               className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'mobile' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <Smartphone className="h-5 w-5" />
@@ -295,7 +339,6 @@ export default function App() {
 
             <button 
               onClick={() => setActiveTab('guidelines')}
-              title="User Guidelines"
               className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'guidelines' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <BookOpen className="h-5 w-5" />
@@ -304,20 +347,21 @@ export default function App() {
 
             <button 
               onClick={() => setActiveTab('license')}
-              title="License & Activation"
               className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'license' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <KeyRound className="h-5 w-5" />
               <span className="hidden md:inline">License</span>
             </button>
 
-            <button 
-              onClick={() => setShowAddProjectModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-extrabold text-sm flex items-center gap-2 transition shadow-md"
-            >
-              <PlusCircle className="h-5 w-5" />
-              New Project
-            </button>
+            {userRole === 'Administrator' && (
+              <button 
+                onClick={() => setShowAddProjectModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-extrabold text-sm flex items-center gap-2 transition shadow-md"
+              >
+                <PlusCircle className="h-5 w-5" />
+                New Project
+              </button>
+            )}
           </div>
         </div>
 
@@ -326,8 +370,9 @@ export default function App() {
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
               { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
+              { id: 'map', label: 'GIS Map View', icon: MapIcon },
               { id: 'reports', label: 'Custom Reports', icon: FileText },
-              { id: 'builder', label: 'Form Builder', icon: FileText },
+              ...(userRole !== 'Enumerator' ? [{ id: 'builder', label: 'Form Builder', icon: FileText }] : []),
               { id: 'entry', label: 'Data Submission', icon: ListCheck },
               { id: 'export', label: 'Export Suite', icon: Download },
               { id: 'print', label: 'Print Forms', icon: Printer }
@@ -369,16 +414,17 @@ export default function App() {
             }} 
           />
         )}
-        {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
+        {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} userRole={userRole} />}
+        {activeTab === 'map' && <GISMapView project={currentProject} />}
         {activeTab === 'reports' && <CustomReportsView project={currentProject} getCalculatedActual={getCalculatedActual} />}
-        {activeTab === 'builder' && (
+        {activeTab === 'builder' && userRole !== 'Enumerator' && (
           <FormBuilderView 
             project={currentProject} 
             setProjects={setProjects} 
-            onRenameForm={(formId, title, desc) => {
+            onUpdateForm={(formId, updatedForm) => {
               setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
                 ...p,
-                forms: p.forms.map(f => f.id === formId ? { ...f, title, description: desc } : f)
+                forms: p.forms.map(f => f.id === formId ? updatedForm : f)
               }));
             }} 
             onDeleteForm={(formId) => {
@@ -399,7 +445,7 @@ export default function App() {
                 ...p,
                 submissions: [submissionObj, ...p.submissions]
               }));
-              alert('Data record submitted and synced to Firebase successfully!');
+              alert('Data record submitted and cached/synced successfully!');
             }} 
             onDeleteSubmission={(subId) => {
               setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
@@ -415,6 +461,8 @@ export default function App() {
         )}
         {activeTab === 'export' && (
           <ExportSuiteView 
+            project={currentProject}
+            getCalculatedActual={getCalculatedActual}
             onExportSubmissions={() => exportCSV(currentProject.submissions, `${currentProject.code}_submissions.csv`)}
             onExportLogframe={() => exportCSV(currentProject.indicators, `${currentProject.code}_logframe.csv`)}
             onExportBackup={() => {
@@ -424,7 +472,7 @@ export default function App() {
             }} 
           />
         )}
-        {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
+        {activeTab === 'mobile' && <MobileSyncView project={currentProject} isOnline={isOnline} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
         {activeTab === 'guidelines' && <UserGuidelinesView />}
         {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
@@ -434,8 +482,8 @@ export default function App() {
         {[
           { id: 'dashboard', label: 'Home', icon: BarChart3 },
           { id: 'logframe', label: 'Indicators', icon: TrendingUp },
+          { id: 'map', label: 'Map', icon: MapIcon },
           { id: 'reports', label: 'Reports', icon: FileText },
-          { id: 'print', label: 'Print', icon: Printer },
           { id: 'more', label: 'More', icon: MoreHorizontal }
         ].map(item => {
           const Icon = item.icon;
@@ -447,8 +495,6 @@ export default function App() {
             <button
               key={item.id}
               type="button"
-              aria-label={item.id === 'more' ? 'More sections' : item.label}
-              aria-current={selected ? 'page' : undefined}
               onClick={() => {
                 if (item.id === 'more') {
                   setShowMobileMenu(value => !value);
@@ -469,7 +515,7 @@ export default function App() {
         <div className="mobile-more-menu print:hidden">
           {[
             { id: 'entry', label: 'Collect data', icon: ListCheck },
-            { id: 'builder', label: 'Form builder', icon: FileText },
+            ...(userRole !== 'Enumerator' ? [{ id: 'builder', label: 'Form builder', icon: FileText }] : []),
             { id: 'export', label: 'Export data', icon: Download },
             { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
             { id: 'guidelines', label: 'User Guidelines', icon: BookOpen },
@@ -621,7 +667,12 @@ function getCalculatedActual(project, ind) {
   const defaultVal = { general: 0, male: 0, female: 0, total: 0 };
   if (!ind.mappedFieldId) return ind.baseline || defaultVal;
 
-  const values = project.submissions.map(sub => Number(sub.data[ind.mappedFieldId])).filter(v => !isNaN(v));
+  const values = project.submissions.map(sub => {
+    const val = sub.data[ind.mappedFieldId];
+    if (Array.isArray(val)) return val.length;
+    return Number(val);
+  }).filter(v => !isNaN(v));
+
   if (values.length === 0) return ind.baseline || defaultVal;
 
   let computedVal = 0;
@@ -657,9 +708,85 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
+// ==========================================
+// GIS MAP VIEW (Leaflet Integration)
+// ==========================================
+function GISMapView({ project }) {
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    // Extract GPS coordinates from submissions
+    const gpsPoints = [];
+    project.submissions.forEach(sub => {
+      Object.entries(sub.data).forEach(([key, val]) => {
+        if (typeof val === 'string' && val.includes(',') && val.split(',').length === 2) {
+          const [lat, lng] = val.split(',').map(n => parseFloat(n.trim()));
+          if (!isNaN(lat) && !isNaN(lng)) {
+            gpsPoints.push({ lat, lng, subId: sub.id, timestamp: sub.timestamp });
+          }
+        }
+      });
+    });
+
+    // Check if Leaflet script is loaded, if not load it dynamically
+    if (!window.L) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => initMap(gpsPoints);
+      document.body.appendChild(script);
+
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+    } else {
+      initMap(gpsPoints);
+    }
+
+    function initMap(points) {
+      if (!mapRef.current) return;
+      if (mapRef.current._leaflet_id) {
+        mapRef.current._leaflet_id = null;
+        mapRef.current.innerHTML = '';
+      }
+
+      const defaultLat = points.length > 0 ? points[0].lat : -3.3869; // Default Tanzania / Arusha center
+      const defaultLng = points.length > 0 ? points[0].lng : 36.6829;
+
+      const map = window.L.map(mapRef.current).setView([defaultLat, defaultLng], 10);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      points.forEach(pt => {
+        window.L.marker([pt.lat, pt.lng])
+          .addTo(map)
+          .bindPopup(`<b>Submission:</b> ${pt.subId}<br/><b>Time:</b> ${pt.timestamp}<br/><b>GPS:</b> ${pt.lat}, ${pt.lng}`);
+      });
+    }
+  }, [project]);
+
+  return (
+    <div className="space-y-6 text-base">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+          <MapIcon className="h-7 w-7 text-indigo-600" /> Geospatial GIS Map Intelligence
+        </h2>
+        <p className="text-base text-slate-600 mt-1">Interactive map plotting all GPS coordinates captured across survey submissions for {project.name}.</p>
+      </div>
+
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div ref={mapRef} className="w-full h-[550px] rounded-xl border border-slate-300 z-10"></div>
+      </div>
+    </div>
+  );
+}
+
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Project Management\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Disaggregated General, Male, Female, and Total Metrics\n4. Custom Reports & Scorecard\n5. Advanced Form Builder (GPS, Photos, Ratings, Skip Logic)\n6. Field Data Submission\n7. Data Export Suite & Full System Backups\n8. Mobile App Sync (Firebase Firestore)`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Role-Based Access Control (RBAC)\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Disaggregated General, Male, Female, and Total Metrics\n4. GIS Mapping Module & GPS Coordinate Tracking\n5. Custom Reports & Scorecard\n6. Advanced Form Builder (GPS, Photos, Ratings, Multi-Select, Skip Logic)\n7. Field Data Submission & Offline-First Caching\n8. Data Export Suite & Automated PDF Reports\n9. Mobile App Sync (Firebase Firestore)`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -700,33 +827,20 @@ function UserGuidelinesView() {
           <p className="text-base text-slate-700">
             In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
-              <span className="font-bold text-indigo-800 block text-base">Academic Background</span>
-              <span className="text-slate-600">Bachelor&apos;s degree in Statistics and Mathematics &amp; Master&apos;s degree in Monitoring and Evaluation.</span>
-            </div>
-            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
-              <span className="font-bold text-indigo-800 block text-base">Core Competencies &amp; Experience</span>
-              <span className="text-slate-600">Capacity building, project initiation, planning, implementation, Data Quality Assessments (DQAs), statistical analysis, learning, and donor reporting.</span>
-            </div>
-          </div>
         </div>
 
         <div className="space-y-4 pt-2">
-          <h3 className="font-extrabold text-lg text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
-          <p>Instantly switch active projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives from the top navigation bar.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
+          <p>Switch between <strong>Administrator</strong>, <strong>M&amp;E Officer</strong>, and <strong>Enumerator</strong> roles to restrict or grant permissions for creating projects, editing forms, or submitting survey records.</p>
 
-          <h3 className="font-extrabold text-lg text-indigo-700">2. Dashboard &amp; Visuals</h3>
-          <p>Executive command center displaying KPI metrics, project codes, donor funding, active indicator totals, and disaggregated progress breakdowns.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">2. Offline-First Caching &amp; Sync</h3>
+          <p>Operate seamlessly in remote field locations across Tanzania. The system automatically caches data locally and synchronizes with Firebase when connection is restored.</p>
 
-          <h3 className="font-extrabold text-lg text-indigo-700">3. Logical Framework Matrix (Logframe) with Demographic Disaggregation</h3>
-          <p>Track Baselines, Targets, and Actuals across <strong>General</strong>, <strong>Male</strong>, <strong>Female</strong>, and <strong>Total</strong>. Link indicators directly to survey questions for automated calculations.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">3. GIS Mapping Module</h3>
+          <p>Visualize all field GPS data points geographically on an interactive Leaflet map to track project footprints and beneficiary distributions.</p>
 
-          <h3 className="font-extrabold text-lg text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
-          <p>Donor-ready summary reports and performance scorecards supporting one-click printing.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">5. Advanced Form Builder &amp; Data Submission</h3>
-          <p>Design multi-question surveys with mandatory toggles, skip logic rules, GPS capture, photo uploads, notes, ratings, and instant cloud synchronization via Firebase Firestore.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">4. Automated PDF Report Generation</h3>
+          <p>Export donor-ready PDF reports containing executive performance scorecards and logframe analyses instantly with a single click.</p>
         </div>
       </div>
     </div>
@@ -858,7 +972,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
   );
 }
 
-function LogframeView({ project, getCalculatedActual, setProjects }) {
+function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
   
@@ -948,9 +1062,11 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
           <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix</h2>
           <p className="text-base text-slate-600 mt-1">Manage indicators with disaggregated demographic metrics (General, Male, Female, Total).</p>
         </div>
-        <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
-          <PlusCircle className="h-5 w-5" /> Add Indicator
-        </button>
+        {userRole !== 'Enumerator' && (
+          <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
+            <PlusCircle className="h-5 w-5" /> Add Indicator
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
@@ -963,7 +1079,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <th className="p-4 text-center">Target (Gen / M / F / Tot)</th>
               <th className="p-4 text-center">Actual (Gen / M / F / Tot)</th>
               <th className="p-4">Automated Data Mapping</th>
-              <th className="p-4 text-right">Actions</th>
+              {userRole !== 'Enumerator' && <th className="p-4 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-base">
@@ -1009,6 +1125,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                       <select
                         value={ind.mappedFieldId || ''}
                         onChange={(e) => handleMapField(ind.id, e.target.value || null, ind.calcType || 'SUM')}
+                        disabled={userRole === 'Enumerator'}
                         className="text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-800 shadow-sm"
                       >
                         <option value="">Manual Entry (No Form Linked)</option>
@@ -1018,6 +1135,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                         <select
                           value={ind.calcType || 'SUM'}
                           onChange={(e) => handleMapField(ind.id, ind.mappedFieldId, e.target.value)}
+                          disabled={userRole === 'Enumerator'}
                           className="text-xs font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl px-2.5 py-1.5"
                         >
                           <option value="SUM">SUM</option>
@@ -1030,16 +1148,18 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                     </div>
                   </td>
 
-                  <td className="p-4 text-right align-top">
-                    <div className="flex justify-end gap-1.5">
-                      <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200">
-                        <Edit2 className="h-5 w-5" />
-                      </button>
-                      <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700 border border-slate-200">
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
+                  {userRole !== 'Enumerator' && (
+                    <td className="p-4 text-right align-top">
+                      <div className="flex justify-end gap-1.5">
+                        <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200">
+                          <Edit2 className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700 border border-slate-200">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -1184,10 +1304,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
             <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <button 
-              onClick={() => activateCode('DEMO-5DAYS')}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2"
-            >
+            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2">
               🚀 Activate Free Demo
             </button>
           </div>
@@ -1200,10 +1317,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
             <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
-            >
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
               <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
@@ -1216,10 +1330,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
             <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
-            >
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License" className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
               <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
@@ -1240,35 +1351,11 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
         )}
 
-        {!isGateway && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-base">
-            <div className="bg-slate-50 p-5 rounded-2xl border">
-              <p className="text-sm font-extrabold text-slate-500 uppercase">Tier Level</p>
-              <p className="font-black text-slate-900 mt-1 text-lg">{license.level}</p>
-            </div>
-            <div className="bg-slate-50 p-5 rounded-2xl border">
-              <p className="text-sm font-extrabold text-slate-500 uppercase">Validity / Remaining</p>
-              <p className="font-black text-indigo-600 mt-1 text-lg">
-                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
-              </p>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleActivate} className="space-y-3 pt-2">
           <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
           <div className="flex gap-3">
-            <input 
-              type="text" 
-              required
-              placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
-              value={inputCode}
-              onChange={(e) => setInputCode(e.target.value)}
-              className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold"
-            />
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">
-              Activate Key
-            </button>
+            <input type="text" required placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL" value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold" />
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">Activate Key</button>
           </div>
         </form>
       </div>
@@ -1277,16 +1364,22 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
 }
 
 function CustomReportsView({ project, getCalculatedActual }) {
+  const downloadPDFReport = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Custom Reports &amp; Scorecard</h2>
           <p className="text-base text-slate-600 mt-1">Donor-ready summary report for {project.name}.</p>
         </div>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800 print:hidden">
-          <Printer className="h-5 w-5" /> Print Report
-        </button>
+        <div className="flex gap-3">
+          <button onClick={downloadPDFReport} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
+            <FileDown className="h-5 w-5" /> Export / Print PDF Report
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
@@ -1351,7 +1444,7 @@ function CustomReportsView({ project, getCalculatedActual }) {
   );
 }
 
-function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
+function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
@@ -1359,6 +1452,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [editingFormId, setEditingFormId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editFields, setEditFields] = useState([]);
 
   const addField = (type) => {
     setFields([...fields, {
@@ -1366,7 +1460,18 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
       label: `New ${type.toUpperCase()} Question`,
       type,
       required: false,
-      options: type === 'select' ? ['Option 1', 'Option 2'] : [],
+      options: type === 'select' || type === 'multiselect' ? ['Option 1', 'Option 2'] : [],
+      skipLogic: null
+    }]);
+  };
+
+  const addEditField = (type) => {
+    setEditFields([...editFields, {
+      id: createId('field'),
+      label: `New ${type.toUpperCase()} Question`,
+      type,
+      required: false,
+      options: type === 'select' || type === 'multiselect' ? ['Option 1', 'Option 2'] : [],
       skipLogic: null
     }]);
   };
@@ -1392,45 +1497,175 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
     setFormTitle('');
     setFormDesc('');
     setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-    alert('Custom form published and saved to Firebase!');
+    alert('Custom form published successfully!');
+  };
+
+  const handleUpdateSavedForm = (formId) => {
+    if (!editTitle.trim()) {
+      alert('Form title cannot be empty.');
+      return;
+    }
+    const updatedForm = {
+      id: formId,
+      title: editTitle,
+      description: editDesc,
+      fields: editFields
+    };
+    onUpdateForm(formId, updatedForm);
+    setEditingFormId(null);
+    alert('Form updated successfully!');
   };
 
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Notes, Ratings, Mandatory toggles, and Skip Logic for {project.name}.</p>
+        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Multi-Select Checkboxes, Mandatory toggles, and Skip Logic for {project.name}.</p>
       </div>
 
       {project.forms.length > 0 && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Active Project Forms ({project.forms.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5">
             {project.forms.map(form => (
-              <div key={form.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between">
+              <div key={form.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
                 {editingFormId === form.id ? (
-                  <div className="space-y-3">
-                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-2.5 text-base font-bold bg-white" />
-                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-2.5 text-sm bg-white h-20" />
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button onClick={() => setEditingFormId(null)} className="px-3 py-1.5 text-sm border rounded-xl bg-white font-bold">Cancel</button>
-                      <button onClick={() => { onRenameForm(form.id, editTitle, editDesc); setEditingFormId(null); }} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-xl font-bold">Save</button>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center border-b pb-2">
+                      <h4 className="font-extrabold text-indigo-700 text-lg">Editing Form</h4>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingFormId(null)} className="px-4 py-2 text-sm border rounded-xl bg-white font-bold">Cancel</button>
+                        <button onClick={() => handleUpdateSavedForm(form.id)} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-xl font-extrabold">Save Form</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Form Title</label>
+                      <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base font-bold bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Description</label>
+                      <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-3 text-sm bg-white h-20" />
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <h5 className="font-extrabold text-slate-800 text-sm">Form Questions ({editFields.length})</h5>
+                      {editFields.map((field, fIdx) => (
+                        <div key={field.id} className="p-4 bg-white rounded-xl border space-y-3">
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="text" 
+                              value={field.label} 
+                              onChange={(e) => {
+                                const updated = [...editFields];
+                                updated[fIdx].label = e.target.value;
+                                setEditFields(updated);
+                              }}
+                              className="flex-1 border rounded-lg px-3 py-2 text-sm font-bold"
+                            />
+                            <span className="text-xs bg-indigo-50 text-indigo-800 font-extrabold px-2.5 py-1 rounded uppercase">{field.type}</span>
+                            <label className="flex items-center gap-1 text-xs font-bold text-slate-700">
+                              <input 
+                                type="checkbox" 
+                                checked={field.required}
+                                onChange={(e) => {
+                                  const updated = [...editFields];
+                                  updated[fIdx].required = e.target.checked;
+                                  setEditFields(updated);
+                                }}
+                              /> Required
+                            </label>
+                            <button onClick={() => setEditFields(editFields.filter(f => f.id !== field.id))} className="text-red-600 text-xs font-bold p-1.5 bg-red-50 rounded border border-red-200">Remove</button>
+                          </div>
+
+                          {(field.type === 'select' || field.type === 'multiselect') && (
+                            <div className="text-sm space-y-1">
+                              <label className="font-bold text-xs text-slate-600">Options (comma-separated):</label>
+                              <input 
+                                type="text" 
+                                value={field.options.join(', ')} 
+                                onChange={(e) => {
+                                  const updated = [...editFields];
+                                  updated[fIdx].options = e.target.value.split(',').map(s => s.trim());
+                                  setEditFields(updated);
+                                }}
+                                className="w-full border rounded-lg p-2 text-xs bg-white"
+                              />
+                            </div>
+                          )}
+
+                          <div className="pt-2 border-t text-xs space-y-1">
+                            <label className="font-extrabold text-slate-700 flex items-center gap-1">
+                              <GitBranch className="h-3.5 w-3.5 text-indigo-600" /> Skip Logic:
+                            </label>
+                            <div className="flex gap-2">
+                              <select 
+                                value={field.skipLogic?.fieldId || ''}
+                                onChange={(e) => {
+                                  const parentId = e.target.value;
+                                  const updated = [...editFields];
+                                  if (!parentId) {
+                                    updated[fIdx].skipLogic = null;
+                                  } else {
+                                    updated[fIdx].skipLogic = { fieldId: parentId, value: updated[fIdx].skipLogic?.value || '' };
+                                  }
+                                  setEditFields(updated);
+                                }}
+                                className="border rounded px-2 py-1 bg-white flex-1"
+                              >
+                                <option value="">-- No Skip Logic (Always Show) --</option>
+                                {editFields.slice(0, fIdx).map(prev => (
+                                  <option key={prev.id} value={prev.id}>Depends on: {prev.label}</option>
+                                ))}
+                              </select>
+                              {field.skipLogic && (
+                                <input 
+                                  type="text" 
+                                  placeholder="Trigger value..."
+                                  value={field.skipLogic.value}
+                                  onChange={(e) => {
+                                    const updated = [...editFields];
+                                    updated[fIdx].skipLogic.value = e.target.value;
+                                    setEditFields(updated);
+                                  }}
+                                  className="border rounded px-2 py-1 w-40"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <button onClick={() => addEditField('text')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Short Text</button>
+                        <button onClick={() => addEditField('select')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Dropdown</button>
+                        <button onClick={() => addEditField('multiselect')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Multi-Select</button>
+                        <button onClick={() => addEditField('location')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ GPS</button>
+                      </div>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-extrabold text-slate-900 text-base">{form.title}</h4>
-                        <span className="text-xs bg-slate-200 px-2.5 py-1 rounded-lg font-mono text-slate-700 font-bold">{form.fields.length} Fields</span>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-black text-slate-900 text-lg">{form.title}</h4>
+                        {form.description && <p className="text-sm text-slate-600 mt-1">{form.description}</p>}
                       </div>
-                      {form.description && <p className="text-sm text-slate-600 mt-1.5">{form.description}</p>}
+                      <span className="text-xs bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full font-mono font-bold">{form.fields.length} Fields</span>
                     </div>
-                    <div className="flex justify-end items-center gap-2 pt-3 border-t mt-3">
-                      <button onClick={() => { setEditingFormId(form.id); setEditTitle(form.title); setEditDesc(form.description || ''); }} className="text-sm font-bold text-slate-700 hover:text-indigo-600 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
-                        <Edit2 className="h-4 w-4" /> Rename
+
+                    <div className="flex justify-end items-center gap-2 pt-3 border-t">
+                      <button 
+                        onClick={() => {
+                          setEditingFormId(form.id);
+                          setEditTitle(form.title);
+                          setEditDesc(form.description || '');
+                          setEditFields(JSON.parse(JSON.stringify(form.fields)));
+                        }} 
+                        className="text-sm font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 bg-white px-4 py-2 rounded-xl border shadow-sm transition"
+                      >
+                        <Edit2 className="h-4 w-4" /> Edit Form &amp; Skip Logic
                       </button>
-                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:text-red-800 flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-1.5 bg-white px-4 py-2 rounded-xl border border-red-200 transition">
                         <Trash2 className="h-4 w-4" /> Delete
                       </button>
                     </div>
@@ -1493,9 +1728,9 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                   <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">Remove</button>
                 </div>
 
-                {field.type === 'select' && (
+                {(field.type === 'select' || field.type === 'multiselect') && (
                   <div className="pl-6 text-sm space-y-1.5">
-                    <label className="font-bold text-slate-700">Dropdown Options (comma separated):</label>
+                    <label className="font-bold text-slate-700">Options (comma separated):</label>
                     <input 
                       type="text" 
                       value={field.options.join(', ')} 
@@ -1525,6 +1760,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
               { type: 'number', label: 'Numeric Quantity', icon: DollarSign },
               { type: 'date', label: 'Date Picker', icon: FileText },
               { type: 'select', label: 'Dropdown Select', icon: GitBranch },
+              { type: 'multiselect', label: 'Multi-Select Checkboxes', icon: CheckSquare },
               { type: 'location', label: 'GPS Location', icon: MapPin },
               { type: 'photo', label: 'Photo / Image Capture', icon: Camera },
               { type: 'note', label: 'Long Note / Observation', icon: NoteIcon },
@@ -1582,7 +1818,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h2 className="text-2xl font-black text-slate-900">Field Data Entry Submission</h2>
-          <p className="text-base text-slate-600 mt-1">Record field survey responses synced directly to Firebase.</p>
+          <p className="text-base text-slate-600 mt-1">Record field survey responses with offline-first caching.</p>
 
           <div className="mt-4">
             <label className="block text-sm font-bold text-slate-700 mb-1">Select Form</label>
@@ -1602,7 +1838,11 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
             {activeForm.fields.map(field => {
               if (field.skipLogic) {
                 const parentVal = formData[field.skipLogic.fieldId];
-                if (parentVal !== field.skipLogic.value) return null;
+                if (Array.isArray(parentVal)) {
+                  if (!parentVal.includes(field.skipLogic.value)) return null;
+                } else if (parentVal !== field.skipLogic.value) {
+                  return null;
+                }
               }
 
               return (
@@ -1629,6 +1869,29 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                       <option value="">-- Select Option --</option>
                       {(field.options || []).map(opt => (<option key={opt} value={opt}>{opt}</option>))}
                     </select>
+                  ) : field.type === 'multiselect' ? (
+                    <div className="space-y-2 bg-slate-50 p-4 rounded-xl border">
+                      {(field.options || []).map(opt => {
+                        const currentArr = formData[field.id] || [];
+                        const checked = currentArr.includes(opt);
+                        return (
+                          <label key={opt} className="flex items-center gap-2 text-sm font-bold text-slate-800 cursor-pointer">
+                            <input 
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                let updated = [...currentArr];
+                                if (e.target.checked) updated.push(opt);
+                                else updated = updated.filter(o => o !== opt);
+                                setFormData({...formData, [field.id]: updated});
+                              }}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                            />
+                            {opt}
+                          </label>
+                        );
+                      })}
+                    </div>
                   ) : field.type === 'location' ? (
                     <div className="flex gap-3">
                       <input 
@@ -1689,7 +1952,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
             })}
 
             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-2xl shadow-md transition mt-6 text-base">
-              Submit Data Record to Cloud
+              Submit Data Record (Offline / Online)
             </button>
           </form>
         ) : (
@@ -1730,7 +1993,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(sub.data).map(([k, v]) => (
                           <span key={k} className="bg-slate-100 text-slate-900 text-sm px-3 py-1.5 rounded-xl border font-bold">
-                            <strong>{k}:</strong> {v}
+                            <strong>{k}:</strong> {Array.isArray(v) ? v.join(', ') : v}
                           </span>
                         ))}
                       </div>
@@ -1751,35 +2014,50 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
   );
 }
 
-function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup }) {
+function ExportSuiteView({ project, getCalculatedActual, onExportSubmissions, onExportLogframe, onExportBackup }) {
+  const downloadAdvancedReportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
-        <p className="text-base text-slate-600 mt-1">Export field submissions, indicators, and backups.</p>
+        <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite &amp; Reporting Hub</h2>
+        <p className="text-base text-slate-600 mt-1">Export raw data, logframe targets, and automated PDF reports.</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
             <div className="bg-emerald-50 p-3.5 rounded-2xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-7 w-7 text-emerald-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Raw Field Submissions</h3>
-            <p className="text-sm text-slate-600 mt-1">Download CSV containing GPS, photos, and ratings.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">Raw Submissions CSV</h3>
+            <p className="text-sm text-slate-600 mt-1">Export all survey records.</p>
           </div>
           <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export CSV</button>
         </div>
+
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
             <div className="bg-indigo-50 p-3.5 rounded-2xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-7 w-7 text-indigo-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Logframe Report</h3>
-            <p className="text-sm text-slate-600 mt-1">Export calculated indicator targets and progress.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">Logframe CSV</h3>
+            <p className="text-sm text-slate-600 mt-1">Export indicators &amp; targets.</p>
           </div>
-          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe CSV</button>
+          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe</button>
         </div>
+
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileCode className="h-7 w-7 text-amber-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Full System Backup</h3>
-            <p className="text-sm text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
+            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileDown className="h-7 w-7 text-amber-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Automated PDF Report</h3>
+            <p className="text-sm text-slate-600 mt-1">Generate printable donor PDF.</p>
+          </div>
+          <button onClick={downloadAdvancedReportPDF} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download PDF</button>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-slate-100 p-3.5 rounded-2xl w-fit mb-3 border border-slate-200"><FileCode className="h-7 w-7 text-slate-800" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">System JSON Backup</h3>
+            <p className="text-sm text-slate-600 mt-1">Complete system data backup.</p>
           </div>
           <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download JSON</button>
         </div>
@@ -1788,24 +2066,32 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
   );
 }
 
-function MobileSyncView({ project }) {
+function MobileSyncView({ project, isOnline }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; API Hub</h2>
-        <p className="text-base text-slate-600 mt-1">Pair mobile devices for offline enumerations.</p>
+        <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; Offline Hub</h2>
+        <p className="text-base text-slate-600 mt-1">Real-time status of your local and cloud synchronization.</p>
       </div>
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
         <div className="flex items-center space-x-4">
-          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200"><Smartphone className="h-8 w-8 text-emerald-600" /></div>
+          <div className={`p-4 rounded-2xl border ${isOnline ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}>
+            {isOnline ? <Wifi className="h-8 w-8" /> : <WifiOff className="h-8 w-8" />}
+          </div>
           <div>
-            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
-            <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">Connected to Firebase Firestore</h3>
+            <span className={`text-xs font-black px-3 py-1 rounded-full border ${isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+              {isOnline ? 'ONLINE (FIREBASE CONNECTED)' : 'OFFLINE (CACHED LOCALLY)'}
+            </span>
+            <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">{isOnline ? 'Instant Cloud Sync Active' : 'Offline-First Caching Active'}</h3>
           </div>
         </div>
-        <p className="text-base text-slate-700">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
+        <p className="text-base text-slate-700">
+          {isOnline 
+            ? 'All data changes and survey responses sync immediately with Firebase Firestore across all devices.' 
+            : 'You are currently offline. All survey submissions and edits are securely cached locally and will automatically sync to Firebase once internet connection is restored.'}
+        </p>
         <div className="p-4 bg-slate-50 rounded-2xl border text-sm font-bold text-slate-900">
-          Current Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
+          Active Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
         </div>
       </div>
     </div>
