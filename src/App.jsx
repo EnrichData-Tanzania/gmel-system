@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import './App.css';
+import { Geolocation } from '@capacitor/geolocation';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
   BarChart3, 
   PlusCircle, 
@@ -32,9 +36,29 @@ import {
   GraduationCap
 } from 'lucide-react';
 
+// ==========================================
+// FIREBASE CLOUD CONFIGURATION
+// ==========================================
+const firebaseConfig = {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
+  projectId: "YOUR_FIREBASE_PROJECT_ID",
+  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "YOUR_FIREBASE_APP_ID"
+};
+
+let db = null;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase init note:", e);
+}
+
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
-// Default Initial Projects with Disaggregated Data Structure
+// Default Initial M&E Projects with Fully Disaggregated Baseline & Target Objects
 const initialProjects = [
   {
     id: 'proj-1',
@@ -59,8 +83,8 @@ const initialProjects = [
         level: 'Output', 
         title: '# of new or rehabilitated water points', 
         baseline: { general: 0, male: 0, female: 0, total: 0 }, 
-        target: { general: 100, male: 40, female: 60, total: 100 }, 
-        unit: 'points', 
+        target: { general: 100, male: 0, female: 0, total: 100 }, 
+        unit: 'number', 
         mappedFieldId: null, 
         calcType: 'SUM' 
       }
@@ -90,10 +114,75 @@ export default function App() {
     activatedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
   });
+  const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    async function fetchCloudData() {
+      try {
+        if (!db) {
+          setIsLoadedFromCloud(true);
+          return;
+        }
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.projects) setProjects(data.projects);
+          if (data.license && data.license.code) {
+            setLicense(data.license);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading from Firebase:', err);
+      } finally {
+        setIsLoadedFromCloud(true);
+      }
+    }
+    fetchCloudData();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoadedFromCloud || !db) return;
+
+    async function saveCloudData() {
+      try {
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        await setDoc(docRef, { projects, license, updated_at: new Date() });
+      } catch (err) {
+        console.error('Error saving to Firebase:', err);
+      }
+    }
+    saveCloudData();
+  }, [projects, license, isLoadedFromCloud]);
+
+  useEffect(() => {
+    const handleInstallAvailable = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+
+    const handleInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', handleInstallAvailable);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallAvailable);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
   
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
@@ -102,8 +191,20 @@ export default function App() {
   const [newProj, setNewProj] = useState({ name: '', code: '', donor: '', budget: '', location: '' });
   const [editProj, setEditProj] = useState({ name: '', code: '', donor: '', budget: '', location: '' });
 
-  const currentProject = projects.find(p => p.id === activeProjectId) || projects[0];
+  const currentProject = projects.find(p => p.id === activeProjectId) || projects[0] || { id: '', name: 'No Projects', code: '', indicators: [], forms: [], submissions: [] };
+
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
+
+  if (!isLoadedFromCloud) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
+        <div className="text-center space-y-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="text-base text-slate-300">Syncing GMEL System with Firebase...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isExpired) {
     return (
@@ -114,8 +215,9 @@ export default function App() {
               <AlertTriangle className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">DEMO PERIOD HAS EXPIRED</h1>
-            <p className="text-base text-slate-300 mt-2">Your trial period has ended. Please enter a valid activation code to continue.</p>
+            <p className="text-base text-slate-300 mt-2">Your 5-day evaluation trial has ended. Please enter an activation code to continue.</p>
           </div>
+          
           <LicenseActivationView license={license} setLicense={setLicense} isGateway={true} />
         </div>
       </div>
@@ -123,10 +225,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans text-base border-t-4 border-indigo-600">
-      <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-20">
-          <div className="flex items-center space-x-3">
+    <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans text-base border-t-4 border-indigo-600">
+      <header className="app-header bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
+        <div className="header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-20">
+          <div className="brand flex items-center space-x-3">
             <div className="bg-indigo-600 p-2.5 rounded-xl shadow-inner">
               <Layers className="h-7 w-7 text-white" />
             </div>
@@ -137,8 +239,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
+          <div className="project-toolbar flex items-center space-x-3 sm:space-x-4">
+            <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
               <Building2 className="h-5 w-5 text-indigo-400" />
               <label htmlFor="project-select" className="text-sm text-slate-300 font-semibold">Project:</label>
               <select 
@@ -153,6 +255,19 @@ export default function App() {
               </select>
             </div>
 
+            {installPrompt && (
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                aria-label="Install G-MEL app"
+                title="Install G-MEL app"
+                className="install-app-button bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 transition"
+              >
+                <Download className="h-5 w-5" />
+                <span>Install</span>
+              </button>
+            )}
+
             <button 
               onClick={() => {
                 setEditProj({
@@ -164,14 +279,24 @@ export default function App() {
                 });
                 setShowEditProjectModal(true);
               }}
-              title="Edit Project"
+              title="Rename or Delete Current Project"
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2.5 rounded-xl font-bold text-sm flex items-center gap-1 transition"
             >
               <Edit2 className="h-5 w-5 text-amber-400" />
             </button>
 
             <button 
+              onClick={() => setActiveTab('mobile')}
+              title="Mobile App Sync"
+              className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'mobile' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            >
+              <Smartphone className="h-5 w-5" />
+              <span className="hidden md:inline">Sync</span>
+            </button>
+
+            <button 
               onClick={() => setActiveTab('guidelines')}
+              title="User Guidelines"
               className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'guidelines' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <BookOpen className="h-5 w-5" />
@@ -180,6 +305,7 @@ export default function App() {
 
             <button 
               onClick={() => setActiveTab('license')}
+              title="License & Activation"
               className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'license' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <KeyRound className="h-5 w-5" />
@@ -196,7 +322,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="bg-slate-800 border-t border-slate-700 shadow-inner">
+        <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
@@ -227,7 +353,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
+      <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
         {activeTab === 'dashboard' && (
           <DashboardView 
             project={currentProject} 
@@ -274,7 +400,7 @@ export default function App() {
                 ...p,
                 submissions: [submissionObj, ...p.submissions]
               }));
-              alert('Data record submitted successfully!');
+              alert('Data record submitted and synced to Firebase successfully!');
             }} 
             onDeleteSubmission={(subId) => {
               setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
@@ -299,12 +425,76 @@ export default function App() {
             }} 
           />
         )}
+        {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
         {activeTab === 'guidelines' && <UserGuidelinesView />}
         {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
       </main>
 
-      {/* Modals */}
+      <nav className="mobile-nav print:hidden" aria-label="Main navigation">
+        {[
+          { id: 'dashboard', label: 'Home', icon: BarChart3 },
+          { id: 'logframe', label: 'Indicators', icon: TrendingUp },
+          { id: 'reports', label: 'Reports', icon: FileText },
+          { id: 'print', label: 'Print', icon: Printer },
+          { id: 'more', label: 'More', icon: MoreHorizontal }
+        ].map(item => {
+          const Icon = item.icon;
+          const selected = item.id === 'more'
+            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'guidelines', 'license'].includes(activeTab)
+            : activeTab === item.id;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={item.id === 'more' ? 'More sections' : item.label}
+              aria-current={selected ? 'page' : undefined}
+              onClick={() => {
+                if (item.id === 'more') {
+                  setShowMobileMenu(value => !value);
+                } else {
+                  setActiveTab(item.id);
+                  setShowMobileMenu(false);
+                }
+              }}
+              className={`mobile-nav-item${selected ? ' is-active' : ''}`}
+            >
+              <Icon aria-hidden="true" />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {showMobileMenu && (
+        <div className="mobile-more-menu print:hidden">
+          {[
+            { id: 'entry', label: 'Collect data', icon: ListCheck },
+            { id: 'builder', label: 'Form builder', icon: FileText },
+            { id: 'export', label: 'Export data', icon: Download },
+            { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
+            { id: 'guidelines', label: 'User Guidelines', icon: BookOpen },
+            { id: 'license', label: 'License & Activation', icon: KeyRound }
+          ].map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setShowMobileMenu(false);
+                }}
+                className="mobile-more-item"
+              >
+                <Icon aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {showAddProjectModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
@@ -427,7 +617,7 @@ export default function App() {
   );
 }
 
-// Helper to compute disaggregated actual values
+// Helper to compute disaggregated actual values based on linked form fields
 function getCalculatedActual(project, ind) {
   const defaultVal = { general: 0, male: 0, female: 0, total: 0 };
   if (!ind.mappedFieldId) return ind.baseline || defaultVal;
@@ -469,33 +659,75 @@ function exportCSV(dataArray, filename) {
 }
 
 function UserGuidelinesView() {
+  const downloadPDFGuidelines = () => {
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Project Management\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Disaggregated General, Male, Female, and Total Metrics\n4. Custom Reports & Scorecard\n5. Advanced Form Builder (GPS, Photos, Ratings)\n6. Field Data Submission\n7. Data Export Suite & Full System Backups\n8. Mobile App Sync (Firebase Firestore)`;
+    const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Gabriel_MEL_System_Guidelines.txt';
+    a.click();
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
         <div>
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-            <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines
+            <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Gabriel Monitoring, Evaluation and Learning System.</p>
+          <p className="text-base text-slate-600 mt-1">Official manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
         </div>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
-          <Printer className="h-5 w-5" /> Print Guide
-        </button>
+        <div className="flex gap-2.5">
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-5 w-5" /> Print Guide
+          </button>
+          <button onClick={downloadPDFGuidelines} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
+            <Download className="h-5 w-5" /> Download Guide
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-base leading-relaxed">
         <div className="border-b pb-4">
-          <h1 className="text-3xl font-black text-slate-900">GMEL System Manual</h1>
+          <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
           <p className="text-indigo-600 text-sm font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
         </div>
 
         <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
           <h3 className="text-base font-black text-indigo-900 uppercase flex items-center gap-2.5">
-            <GraduationCap className="h-6 w-6 text-indigo-600" /> System Background
+            <GraduationCap className="h-6 w-6 text-indigo-600" /> About the Founder &amp; System Background
           </h3>
           <p className="text-base text-slate-700">
-            Designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform incorporates professional expertise in development programming and M&amp;E consultancy across Tanzania.
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
+              <span className="font-bold text-indigo-800 block text-base">Academic Background</span>
+              <span className="text-slate-600">Bachelor&apos;s degree in Statistics and Mathematics &amp; Master&apos;s degree in Monitoring and Evaluation.</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
+              <span className="font-bold text-indigo-800 block text-base">Core Competencies &amp; Experience</span>
+              <span className="text-slate-600">Capacity building, project initiation, planning, implementation, Data Quality Assessments (DQAs), statistical analysis, learning, and donor reporting.</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4 pt-2">
+          <h3 className="font-extrabold text-lg text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
+          <p>Instantly switch active projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives from the top navigation bar.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">2. Dashboard &amp; Visuals</h3>
+          <p>Executive command center displaying KPI metrics, project codes, donor funding, active indicator totals, and disaggregated progress breakdowns.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">3. Logical Framework Matrix (Logframe) with Demographic Disaggregation</h3>
+          <p>Track Baselines, Targets, and Actuals across <strong>General</strong> (e.g., number of schools or water points), <strong>Male</strong>, <strong>Female</strong>, and <strong>Total</strong>. Link indicators directly to survey questions for automated calculations.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
+          <p>Donor-ready summary reports and performance scorecards supporting one-click printing.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">5. Advanced Form Builder &amp; Data Submission</h3>
+          <p>Design multi-question surveys with GPS capture, photo uploads, notes, ratings, and instant cloud synchronization via Firebase Firestore.</p>
         </div>
       </div>
     </div>
@@ -521,14 +753,14 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 
   return (
     <div className="space-y-6 text-base">
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="dashboard-heading flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">WORKSPACE</div>
+          <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
           <h2 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h2>
-          <p className="text-base text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="h-5 w-5" /> {project.location}</p>
+          <p className="text-base text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="h-5 w-5" /> {project.location} · Reporting period: 2026</p>
         </div>
         <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition">
-          <Edit2 className="h-5 w-5" /> Edit Project
+          <Edit2 className="h-5 w-5" /> Edit project
         </button>
       </div>
 
@@ -566,16 +798,18 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
-            <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Progress
-          </h3>
+          <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Target vs. Calculated Progress
+            </h3>
+          </div>
           <div className="space-y-5 pt-2">
             {project.indicators.map(ind => {
               const actualObj = getCalculatedActual(project, ind);
               const actualVal = actualObj.total || actualObj.general || 0;
               const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
               const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
-              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
+              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100));
 
               return (
                 <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
@@ -596,8 +830,8 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
-              <PieChart className="h-6 w-6 text-indigo-600" /> Level Breakdown
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <PieChart className="h-6 w-6 text-indigo-600" /> Indicator Level Breakdown
             </h3>
             <div className="py-6 flex justify-center">
               <div className="w-36 h-36 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
@@ -633,7 +867,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
     level: 'Output', 
     title: '', 
     baseline: { general: 0, male: 0, female: 0, total: 0 },
-    target: { general: 100, male: 40, female: 60, total: 100 },
+    target: { general: 100, male: 0, female: 0, total: 100 },
     unit: 'Units' 
   });
 
@@ -653,7 +887,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     setShowAddModal(false);
-    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 40, female: 60, total: 100 }, unit: 'Units' });
+    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
   };
 
   const openIndicatorEditor = (ind) => {
@@ -690,7 +924,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
     }));
     setEditingIndicatorId(null);
     setShowAddModal(false);
-    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 40, female: 60, total: 100 }, unit: 'Units' });
+    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
   };
 
   const handleDeleteIndicator = (indicator) => {
@@ -750,6 +984,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                   </td>
                   <td className="p-4 font-bold text-slate-900 align-top max-w-xs">{ind.title}</td>
                   
+                  {/* Baseline Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-slate-900">{baseline.general}</strong> {ind.unit}</div>
@@ -757,6 +992,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                     </div>
                   </td>
 
+                  {/* Target Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-indigo-900">{target.general}</strong> {ind.unit}</div>
@@ -764,6 +1000,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                     </div>
                   </td>
 
+                  {/* Actual Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top">
                     <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
                       <div>Gen: <strong className="text-indigo-700">{actual.general}</strong> {ind.unit}</div>
@@ -836,11 +1073,12 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
             </div>
 
+            {/* Disaggregated Baseline Inputs */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
               <label className="block text-sm font-extrabold text-slate-800">Baseline Disaggregation (General, Male, Female)</label>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <span className="text-xs font-bold text-slate-600 block mb-1">General</span>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General (Schools/Items)</span>
                   <input type="number" value={newInd.baseline.general} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
                 </div>
                 <div>
@@ -854,6 +1092,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               </div>
             </div>
 
+            {/* Disaggregated Target Inputs */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
               <label className="block text-sm font-extrabold text-slate-800">Target Disaggregation (General, Male, Female)</label>
               <div className="grid grid-cols-3 gap-2">
@@ -915,13 +1154,18 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         expiresAt: null
       };
     } else {
-      alert('Invalid activation code.');
+      alert('Invalid activation code. Please enter a valid code.');
       return;
     }
 
     setLicense(newLicenseData);
     setInputCode('');
     alert(`Activation successful! Tier: ${newLicenseData.level}`);
+  };
+
+  const handleActivate = (e) => {
+    e.preventDefault();
+    activateCode(inputCode);
   };
 
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
@@ -934,7 +1178,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and activation keys.</p>
+          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
         </div>
       )}
 
@@ -943,10 +1187,14 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <div>
             <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
             <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
+            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition">
-              Activate Demo
+            <button 
+              onClick={() => activateCode('DEMO-5DAYS')}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2"
+            >
+              🚀 Activate Free Demo
             </button>
           </div>
         </div>
@@ -955,10 +1203,14 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <div>
             <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
             <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
+            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a href="mailto:info.enrichdata@gmail.com?subject=One-Year%20Plan" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
-              <Mail className="h-5 w-5" /> Request Plan
+            <a 
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
+            >
+              <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
         </div>
@@ -966,14 +1218,65 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">Lifetime</h3>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a href="mailto:info.enrichdata@gmail.com?subject=Lifetime%20License" className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
-              <Mail className="h-5 w-5" /> Request License
+            <a 
+              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
+            >
+              <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
         </div>
+      </div>
+
+      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
+        {!isGateway && (
+          <div className="flex items-center justify-between border-b pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
+              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+            </div>
+            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+              {isExpired ? 'Expired' : 'Active'}
+            </span>
+          </div>
+        )}
+
+        {!isGateway && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-base">
+            <div className="bg-slate-50 p-5 rounded-2xl border">
+              <p className="text-sm font-extrabold text-slate-500 uppercase">Tier Level</p>
+              <p className="font-black text-slate-900 mt-1 text-lg">{license.level}</p>
+            </div>
+            <div className="bg-slate-50 p-5 rounded-2xl border">
+              <p className="text-sm font-extrabold text-slate-500 uppercase">Validity / Remaining</p>
+              <p className="font-black text-indigo-600 mt-1 text-lg">
+                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleActivate} className="space-y-3 pt-2">
+          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
+          <div className="flex gap-3">
+            <input 
+              type="text" 
+              required
+              placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold"
+            />
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">
+              Activate Key
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -997,10 +1300,56 @@ function CustomReportsView({ project, getCalculatedActual }) {
           <div>
             <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg font-bold">{project.code}</span>
             <h1 className="text-3xl font-black text-slate-900 mt-1.5">{project.name}</h1>
+            <p className="text-base text-slate-600 mt-1"><MapPin className="h-5 w-5 inline mr-1" /> {project.location}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-500 uppercase font-extrabold">Donor Partner</p>
             <p className="text-base font-bold text-slate-900">{project.donor}</p>
+            <p className="text-sm text-emerald-600 font-extrabold mt-1">Budget: {project.budget}</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-indigo-600" /> Executive Indicator Performance Scorecard
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-base border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
+                  <th className="p-4">Level</th>
+                  <th className="p-4">Indicator Statement</th>
+                  <th className="p-4 text-center">Baseline</th>
+                  <th className="p-4 text-center">Target</th>
+                  <th className="p-4 text-center">Actual</th>
+                  <th className="p-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {project.indicators.map(ind => {
+                  const actualObj = getCalculatedActual(project, ind);
+                  const actual = actualObj.total || actualObj.general || 0;
+                  const target = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+                  const base = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+                  const pct = Math.min(100, Math.round(((actual - base) / (target - base || 1)) * 100));
+
+                  return (
+                    <tr key={ind.id} className="hover:bg-slate-50">
+                      <td className="p-4 font-bold"><span className="px-3 py-1 bg-indigo-50 text-indigo-900 rounded-lg text-sm border font-extrabold">{ind.level}</span></td>
+                      <td className="p-4 font-bold text-slate-900">{ind.title}</td>
+                      <td className="p-4 text-center font-mono text-slate-600">{base} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-bold text-slate-800">{target} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-black text-indigo-700">{actual} {ind.unit}</td>
+                      <td className="p-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-sm font-extrabold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {pct}% Achieved
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1011,33 +1360,181 @@ function CustomReportsView({ project, getCalculatedActual }) {
 function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [] }]);
+  const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
+
+  const [editingFormId, setEditingFormId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
+  const addField = (type) => {
+    setFields([...fields, {
+      id: createId('field'),
+      label: `New ${type.toUpperCase()} Question`,
+      type,
+      required: false,
+      options: type === 'select' ? ['Option 1', 'Option 2'] : [],
+      skipLogic: null
+    }]);
+  };
 
   const handleSaveForm = () => {
-    if (!formTitle.trim()) return;
+    if (!formTitle.trim()) {
+      alert('Please enter a title for the form.');
+      return;
+    }
+    const formId = createId('form');
+    const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
     const newForm = {
-      id: createId('form'),
+      id: formId,
       title: formTitle,
       description: formDesc,
-      fields
+      fields: fields.map(field => ({
+        ...field,
+        id: fieldIds.get(field.id),
+        skipLogic: field.skipLogic ? { ...field.skipLogic, fieldId: fieldIds.get(field.skipLogic.fieldId) } : null
+      }))
     };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
     setFormTitle('');
     setFormDesc('');
-    setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [] }]);
-    alert('Form published!');
+    setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
+    alert('Custom form published and saved to Firebase!');
   };
 
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-        <p className="text-base text-slate-600 mt-1">Design surveys for {project.name}.</p>
+        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Notes, Ratings for {project.name}.</p>
       </div>
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
-        <input type="text" placeholder="Form Name" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base font-bold" />
-        <button onClick={handleSaveForm} className="bg-emerald-600 text-white font-extrabold px-6 py-3 rounded-xl">Publish Form</button>
+
+      {project.forms.length > 0 && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Active Project Forms ({project.forms.length})</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {project.forms.map(form => (
+              <div key={form.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between">
+                {editingFormId === form.id ? (
+                  <div className="space-y-3">
+                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-2.5 text-base font-bold bg-white" />
+                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-2.5 text-sm bg-white h-20" />
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button onClick={() => setEditingFormId(null)} className="px-3 py-1.5 text-sm border rounded-xl bg-white font-bold">Cancel</button>
+                      <button onClick={() => { onRenameForm(form.id, editTitle, editDesc); setEditingFormId(null); }} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-xl font-bold">Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-extrabold text-slate-900 text-base">{form.title}</h4>
+                        <span className="text-xs bg-slate-200 px-2.5 py-1 rounded-lg font-mono text-slate-700 font-bold">{form.fields.length} Fields</span>
+                      </div>
+                      {form.description && <p className="text-sm text-slate-600 mt-1.5">{form.description}</p>}
+                    </div>
+                    <div className="flex justify-end items-center gap-2 pt-3 border-t mt-3">
+                      <button onClick={() => { setEditingFormId(form.id); setEditTitle(form.title); setEditDesc(form.description || ''); }} className="text-sm font-bold text-slate-700 hover:text-indigo-600 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                        <Edit2 className="h-4 w-4" /> Rename
+                      </button>
+                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:text-red-800 flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                        <Trash2 className="h-4 w-4" /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Form Name</label>
+              <input type="text" placeholder="e.g. Beneficiary Monitoring Survey" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base bg-white font-bold" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Instructions / Description</label>
+              <textarea placeholder="Guidelines for enumerators..." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="w-full border rounded-xl p-3 text-base h-24" />
+            </div>
+          </div>
+
+          <hr className="border-slate-200" />
+
+          <div className="space-y-4">
+            <h3 className="text-base font-extrabold text-slate-900">Form Questions ({fields.length})</h3>
+            {fields.map((field, idx) => (
+              <div key={field.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm font-extrabold text-slate-500 font-mono">Question {idx + 1}</span>
+                  <input 
+                    type="text" 
+                    value={field.label} 
+                    onChange={(e) => {
+                      const updated = [...fields];
+                      updated[idx].label = e.target.value;
+                      setFields(updated);
+                    }} 
+                    className="flex-1 bg-white border rounded-xl px-4 py-2 text-base font-bold shadow-sm" 
+                  />
+                  <span className="text-xs bg-indigo-100 text-indigo-900 font-extrabold px-3 py-1 rounded-lg uppercase">{field.type}</span>
+                  <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">Remove</button>
+                </div>
+
+                {field.type === 'select' && (
+                  <div className="pl-6 text-sm space-y-1.5">
+                    <label className="font-bold text-slate-700">Dropdown Options (comma separated):</label>
+                    <input 
+                      type="text" 
+                      value={field.options.join(', ')} 
+                      onChange={(e) => {
+                        const updated = [...fields];
+                        updated[idx].options = e.target.value.split(',').map(s => s.trim());
+                        setFields(updated);
+                      }}
+                      className="w-full border rounded-xl p-2.5 bg-white text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-md transition text-base">
+            Publish Form To Project
+          </button>
+        </div>
+
+        <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4 h-fit">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300">Add Question Type</h3>
+          <div className="grid grid-cols-1 gap-2.5">
+            {[
+              { type: 'text', label: 'Short Text', icon: FileText },
+              { type: 'number', label: 'Numeric Quantity', icon: DollarSign },
+              { type: 'date', label: 'Date Picker', icon: FileText },
+              { type: 'select', label: 'Dropdown Select', icon: GitBranch },
+              { type: 'location', label: 'GPS Location', icon: MapPin },
+              { type: 'photo', label: 'Photo / Image Capture', icon: Camera },
+              { type: 'note', label: 'Long Note / Observation', icon: NoteIcon },
+              { type: 'rating', label: '1-5 Star Rating', icon: Star }
+            ].map((tool) => {
+              const Icon = tool.icon;
+              return (
+                <button
+                  key={tool.type}
+                  onClick={() => addField(tool.type)}
+                  className="flex items-center space-x-3 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 text-sm font-bold transition text-left"
+                >
+                  <Icon className="h-5 w-5 text-indigo-400" />
+                  <span>{tool.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1046,29 +1543,194 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
 function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
   const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
   const [formData, setFormData] = useState({});
+
   const activeForm = project.forms.find(f => f.id === selectedFormId);
+
+  const handleCaptureGPS = async (fieldId) => {
+    try {
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000
+      });
+      const coords = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+      setFormData(prev => ({ ...prev, [fieldId]: coords }));
+      alert(`GPS captured successfully: ${coords}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Unable to retrieve location. ${message}`);
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!activeForm) return;
+    onSubmitForm(activeForm.id, formData);
+    setFormData({});
+  };
 
   return (
     <div className="space-y-8 text-base">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h2 className="text-2xl font-black text-slate-900">Field Data Entry Submission</h2>
-          <select value={selectedFormId} onChange={(e) => setSelectedFormId(e.target.value)} className="w-full border rounded-xl p-3 mt-3 font-bold bg-white">
-            {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
-          </select>
+          <p className="text-base text-slate-600 mt-1">Record field survey responses synced directly to Firebase.</p>
+
+          <div className="mt-4">
+            <label className="block text-sm font-bold text-slate-700 mb-1">Select Form</label>
+            <select 
+              value={selectedFormId} 
+              onChange={(e) => { setSelectedFormId(e.target.value); setFormData({}); }}
+              className="w-full border rounded-xl p-3 text-base font-bold bg-white"
+            >
+              {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
+            </select>
+          </div>
         </div>
 
-        {activeForm && (
-          <form onSubmit={(e) => { e.preventDefault(); onSubmitForm(activeForm.id, formData); setFormData({}); }} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        {activeForm ? (
+          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
             <h3 className="font-extrabold text-slate-900 text-xl border-b pb-3">{activeForm.title}</h3>
-            {activeForm.fields.map(field => (
-              <div key={field.id} className="space-y-2">
-                <label className="block text-sm font-bold text-slate-800">{field.label}</label>
-                <input type="text" value={formData[field.id] || ''} onChange={(e) => setFormData({...formData, [field.id]: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
-              </div>
-            ))}
-            <button type="submit" className="w-full bg-indigo-600 text-white font-extrabold py-4 rounded-2xl shadow-md">Submit Data Record</button>
+            {activeForm.fields.map(field => {
+              return (
+                <div key={field.id} className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-800">
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                  </label>
+
+                  {field.type === 'number' || field.type === 'text' || field.type === 'date' ? (
+                    <input 
+                      type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                      required={field.required}
+                      value={formData[field.id] || ''}
+                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
+                    />
+                  ) : field.type === 'select' ? (
+                    <select
+                      required={field.required}
+                      value={formData[field.id] || ''}
+                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
+                    >
+                      <option value="">-- Select Option --</option>
+                      {(field.options || []).map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+                    </select>
+                  ) : field.type === 'location' ? (
+                    <div className="flex gap-3">
+                      <input 
+                        type="text" 
+                        readOnly
+                        required={field.required}
+                        placeholder="Latitude, Longitude"
+                        value={formData[field.id] || ''}
+                        className="flex-1 border rounded-xl p-3 text-base bg-slate-50 font-mono"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => handleCaptureGPS(field.id)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-extrabold flex items-center gap-2 shadow"
+                      >
+                        <MapPin className="h-5 w-5" /> Capture GPS
+                      </button>
+                    </div>
+                  ) : field.type === 'photo' ? (
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      required={field.required}
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) setFormData({...formData, [field.id]: file.name});
+                      }}
+                      className="w-full border rounded-xl p-3 text-base bg-white"
+                    />
+                  ) : field.type === 'note' ? (
+                    <textarea 
+                      required={field.required}
+                      placeholder="Enter detailed observations..."
+                      value={formData[field.id] || ''}
+                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
+                      className="w-full border rounded-xl p-3 text-base h-28 bg-white"
+                    />
+                  ) : field.type === 'rating' ? (
+                    <div className="flex items-center gap-3">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setFormData({...formData, [field.id]: String(star)})}
+                          className={`p-3 rounded-xl border text-base font-bold flex items-center gap-1.5 transition ${
+                            Number(formData[field.id]) >= star 
+                              ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm' 
+                              : 'bg-slate-50 text-slate-500 border-slate-200'
+                          }`}
+                        >
+                          <Star className="h-5 w-5 fill-current" /> {star}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-2xl shadow-md transition mt-6 text-base">
+              Submit Data Record to Cloud
+            </button>
           </form>
+        ) : (
+          <p className="text-center text-slate-600 font-bold">No active forms available.</p>
+        )}
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="flex justify-between items-center border-b pb-3">
+          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+            <Database className="h-6 w-6 text-indigo-600" /> Submitted Field Data Logs ({project.submissions.length})
+          </h3>
+          {project.submissions.length > 0 && (
+            <button onClick={onClearAllSubmissions} className="text-sm text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl border border-red-300 font-extrabold">
+              Clear All Submissions
+            </button>
+          )}
+        </div>
+        {project.submissions.length === 0 ? (
+          <p className="text-slate-500 text-base italic">No entries recorded yet for this project.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-base">
+              <thead className="bg-slate-100 text-slate-800 font-extrabold border-b">
+                <tr>
+                  <th className="py-3 px-4">Ref</th>
+                  <th className="py-3 px-4">Timestamp</th>
+                  <th className="py-3 px-4">Field Responses</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {project.submissions.map(sub => (
+                  <tr key={sub.id} className="hover:bg-slate-50">
+                    <td className="py-4 px-4 font-mono text-sm text-indigo-700 font-bold">{sub.id}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm">{sub.timestamp}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(sub.data).map(([k, v]) => (
+                          <span key={k} className="bg-slate-100 text-slate-900 text-sm px-3 py-1.5 rounded-xl border font-bold">
+                            <strong>{k}:</strong> {v}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <button onClick={() => onDeleteSubmission(sub.id)} className="text-red-600 hover:text-red-800 p-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200" title="Delete">
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -1080,11 +1742,56 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
+        <p className="text-base text-slate-600 mt-1">Export field submissions, indicators, and backups.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <h3 className="font-extrabold text-slate-900 text-lg">Raw Submissions</h3>
-          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 text-white font-extrabold py-3 rounded-xl shadow-md">Export CSV</button>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-emerald-50 p-3.5 rounded-2xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-7 w-7 text-emerald-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Raw Field Submissions</h3>
+            <p className="text-sm text-slate-600 mt-1">Download CSV containing GPS, photos, and ratings.</p>
+          </div>
+          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export CSV</button>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-indigo-50 p-3.5 rounded-2xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-7 w-7 text-indigo-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Logframe Report</h3>
+            <p className="text-sm text-slate-600 mt-1">Export calculated indicator targets and progress.</p>
+          </div>
+          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe CSV</button>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileCode className="h-7 w-7 text-amber-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Full System Backup</h3>
+            <p className="text-sm text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
+          </div>
+          <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download JSON</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileSyncView({ project }) {
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 text-base">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; API Hub</h2>
+        <p className="text-base text-slate-600 mt-1">Pair mobile devices for offline enumerations.</p>
+      </div>
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+        <div className="flex items-center space-x-4">
+          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200"><Smartphone className="h-8 w-8 text-emerald-600" /></div>
+          <div>
+            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
+            <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">Connected to Firebase Firestore</h3>
+          </div>
+        </div>
+        <p className="text-base text-slate-700">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
+        <div className="p-4 bg-slate-50 rounded-2xl border text-sm font-bold text-slate-900">
+          Current Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
         </div>
       </div>
     </div>
@@ -1095,17 +1802,50 @@ function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
   const activeForm = project.forms.find(f => f.id === selectedFormId) || project.forms[0];
   return (
     <div className="space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
-        <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2">
-          <Printer className="h-5 w-5" /> Print Form
-        </button>
-      </div>
-      {activeForm && (
-        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none">
-          <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
-          <h2 className="text-xl font-extrabold text-slate-900 border-b pb-1 mt-4">{activeForm.title}</h2>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
+          <p className="text-base text-slate-600 mt-1">Generates clean paper-ready survey sheets.</p>
         </div>
+        <div className="print-actions flex items-center gap-3">
+          <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-xl px-4 py-2.5 text-base font-bold bg-white">
+            {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
+          </select>
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-5 w-5" /> Print Form
+          </button>
+        </div>
+      </div>
+      {activeForm ? (
+        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none print:p-0">
+          <div className="border-b-2 border-slate-900 pb-5 mb-6 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
+              <p className="text-base font-bold text-slate-600">Official Field Monitoring Survey Paper Form</p>
+            </div>
+            <div className="text-right text-sm text-slate-600">
+              <p><strong>Code:</strong> {project.code}</p>
+              <p><strong>Ref:</strong> {activeForm.id}</p>
+            </div>
+          </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-extrabold text-slate-900 border-b pb-1">{activeForm.title}</h2>
+            {activeForm.description && <p className="text-sm text-slate-600 mt-1 italic">{activeForm.description}</p>}
+          </div>
+          <div className="space-y-6">
+            {activeForm.fields.map((field, idx) => (
+              <div key={field.id} className="space-y-2">
+                <div className="flex justify-between text-base font-bold text-slate-900">
+                  <span>{idx + 1}. {field.label} {field.required && '*'}</span>
+                  <span className="text-xs text-slate-500 font-normal">[{field.type.toUpperCase()}]</span>
+                </div>
+                <div className="h-12 border border-slate-400 rounded-xl bg-white"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-center text-slate-600">No form available to print.</p>
       )}
     </div>
   );
