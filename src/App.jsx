@@ -58,7 +58,7 @@ try {
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
-// Default Initial M&E Projects with Disaggregated Baseline & Target
+// Default Initial M&E Projects with Fully Disaggregated Baseline & Target Objects
 const initialProjects = [
   {
     id: 'proj-1',
@@ -200,7 +200,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-base text-slate-300">Syncing [GMEL System](url?id=5) with Firebase...</p>
+          <p className="text-base text-slate-300">Syncing GMEL System with Firebase...</p>
         </div>
       </div>
     );
@@ -676,7 +676,7 @@ function UserGuidelinesView() {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Official manual for the [Gabriel Monitoring, Evaluation and Learning System](url?id=5).</p>
+          <p className="text-base text-slate-600 mt-1">Official manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
         </div>
         <div className="flex gap-2.5">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
