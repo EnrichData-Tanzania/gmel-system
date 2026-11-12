@@ -32,7 +32,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   BellRing,
-  Mail
+  Mail,
+  BookOpen
 } from 'lucide-react';
 
 // ==========================================
@@ -295,6 +296,7 @@ export default function App() {
               { id: 'export', label: 'Export Suite', icon: Download },
               { id: 'mobile', label: 'Mobile App Sync', icon: Smartphone },
               { id: 'print', label: 'Print Forms', icon: Printer },
+              { id: 'guidelines', label: 'User Guidelines', icon: BookOpen },
               { id: 'license', label: 'License & Activation', icon: KeyRound }
             ].map(tab => {
               const Icon = tab.icon;
@@ -392,6 +394,7 @@ export default function App() {
         )}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
+        {activeTab === 'guidelines' && <UserGuidelinesView />}
         {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
       </main>
 
@@ -405,7 +408,7 @@ export default function App() {
         ].map(item => {
           const Icon = item.icon;
           const selected = item.id === 'more'
-            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'license'].includes(activeTab)
+            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'guidelines', 'license'].includes(activeTab)
             : activeTab === item.id;
 
           return (
@@ -437,6 +440,7 @@ export default function App() {
             { id: 'builder', label: 'Form builder', icon: FileText },
             { id: 'export', label: 'Export data', icon: Download },
             { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
+            { id: 'guidelines', label: 'User Guidelines', icon: BookOpen },
             { id: 'license', label: 'License & Activation', icon: KeyRound }
           ].map(item => {
             const Icon = item.icon;
@@ -610,6 +614,70 @@ function exportCSV(dataArray, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// USER GUIDELINES COMPONENT
+function UserGuidelinesView() {
+  const downloadPDFGuidelines = () => {
+    const guidelineText = `GMEL MONITORING & EVALUATION (M&E) SYSTEM: END-USER GUIDELINE\n\n1. Top Navigation & Project Management Bar\n- Project Switcher: Toggle between projects instantly.\n- New Project: Create initiatives with budgets and regions.\n\n2. Dashboard & Visuals\n- Displays KPI metrics, progress bars, and indicator breakdowns.\n\n3. Logical Framework Matrix (Logframe)\n- Manage indicators and map them automatically to survey fields.\n\n4. Custom Reports & Scorecard\n- Donor-ready executive performance scorecards with print support.\n\n5. Advanced Form Builder\n- Design custom forms with GPS, photos, notes, and ratings.\n\n6. Field Data Submission\n- Record survey responses and capture precise GPS coordinates.\n\n7. Data Export Suite\n- Export raw submissions, logframes, and JSON backups.\n\n8. Mobile App Sync\n- Firebase cloud synchronization across all devices.`;
+    const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'GMEL_System_User_Guidelines.txt';
+    a.click();
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-indigo-600" /> System User Guidelines &amp; Documentation
+          </h2>
+          <p className="text-sm text-slate-500">Comprehensive feature reference for project managers and enumerators.</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-4 w-4" /> Print Guide
+          </button>
+          <button onClick={downloadPDFGuidelines} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-indigo-700">
+            <Download className="h-4 w-4" /> Download Guide
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-sm">
+        <div className="border-b pb-4">
+          <h1 className="text-2xl font-black text-slate-900">GMEL M&amp;E System User Manual</h1>
+          <p className="text-slate-500 text-xs mt-1">Official Documentation · EnrichData Tanzania</p>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-bold text-base text-indigo-700">1. Top Navigation &amp; Project Management Bar</h3>
+          <p>Located at the top of your screen, this toolbar enables you to switch between active development programs or create new initiatives. Changing projects updates all dashboards, forms, indicators, and submissions instantly.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">2. Dashboard &amp; Visuals</h3>
+          <p>Serves as your executive command center. View KPI metrics including your Project Code, donor funding, active indicator counts, and total survey submissions alongside visual progress bars and level breakdowns.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">3. Logical Framework Matrix (Logframe)</h3>
+          <p>Manage your results framework. Link any indicator directly to a specific question inside your survey forms and choose an automated calculation method (SUM, AVG, COUNT, MAX, or PERCENTAGE) so incoming field data updates totals automatically.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
+          <p>Provides a donor-ready tabular summary of indicator achievements against targets. Supports one-click printing and PDF exports via your browser.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">5. Advanced Form Builder</h3>
+          <p>Design surveys with rich question types including short text, numeric quantities, dropdowns, GPS coordinates, photo captures, observation notes, and 1-5 star ratings.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">6. Field Data Submission</h3>
+          <p>Used by field enumerators to record responses. Features instant GPS capture via device location services and a live database grid to review or delete logs.</p>
+
+          <h3 className="font-bold text-base text-indigo-700">7. Data Export Suite &amp; Mobile Sync</h3>
+          <p>Export raw CSV submissions and logframe reports or download full JSON system backups. The system connects securely to Firebase Firestore for real-time multi-device cloud synchronization.</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
