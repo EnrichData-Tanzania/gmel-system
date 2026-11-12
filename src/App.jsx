@@ -824,7 +824,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Official operational manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
+          <p className="text-base text-slate-600 mt-1">Official operational manual for the [GMEL System](url?id=5).</p>
         </div>
         <div className="flex gap-2.5">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
@@ -854,7 +854,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
         <div className="space-y-6">
           <div className="space-y-2">
             <h3 className="font-extrabold text-xl text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
-            <p className="text-slate-700">The platform enforces strict security across three user tiers protected by a verified security PIN (`GMEL2026!`):</p>
+            <p className="text-slate-700">The platform enforces strict security across three user tiers protected by a verified security PIN (<code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-mono">GMEL2026!</code>):</p>
             <ul className="list-disc pl-6 space-y-1 text-slate-700 font-bold">
               <li>Administrator: Full project creation, indicator configuration, form building, and financial expense tracking.</li>
               <li>M&amp;E Officer: Logframe monitoring, GIS map analysis, and scorecard reviews.</li>
@@ -865,7 +865,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
           <div className="space-y-2">
             <h3 className="font-extrabold text-xl text-indigo-700">2. Dashboard &amp; Financial Budget Tracking</h3>
             <p className="text-slate-700">
-              The home dashboard calculates overall project health ratings (*On Track*, *Needs Attention*, *Target Achieved*) and tracks real expenditure ratios against donor funding using the integrated **+ Add Expense** module.
+              The home dashboard calculates overall project health ratings (*On Track*, *Needs Attention*, *Target Achieved*) and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
             </p>
           </div>
 
