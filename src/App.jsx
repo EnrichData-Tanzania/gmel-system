@@ -839,7 +839,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
       <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 text-slate-800 text-base leading-relaxed">
         <div className="border-b pb-6">
           <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
-          <p className="text-indigo-600 text-sm font-extrabold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
+          <p className="text-indigo-600 text-sm font-extrabold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo &middot; EnrichData Tanzania</p>
         </div>
 
         <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
@@ -865,7 +865,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
           <div className="space-y-2">
             <h3 className="font-extrabold text-xl text-indigo-700">2. Dashboard &amp; Financial Budget Tracking</h3>
             <p className="text-slate-700">
-              The home dashboard calculates overall project health ratings (*On Track*, *Needs Attention*, *Target Achieved*) and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
+              The home dashboard calculates overall project health ratings (On Track, Needs Attention, Target Achieved) and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
             </p>
           </div>
 
