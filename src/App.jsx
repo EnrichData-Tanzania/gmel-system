@@ -256,7 +256,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                GMEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2.5 py-1 rounded border border-indigo-400/30">SYSTEM</span>
+                GMEL System
               </h1>
             </div>
           </div>
@@ -805,7 +805,7 @@ function UserGuidelinesView() {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Official manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
+          <p className="text-base text-slate-600 mt-1">Official manual for the GMEL System.</p>
         </div>
         <div className="flex gap-2.5">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
@@ -819,7 +819,7 @@ function UserGuidelinesView() {
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-base leading-relaxed">
         <div className="border-b pb-4">
-          <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
+          <h1 className="text-3xl font-black text-slate-900">GMEL System Manual</h1>
           <p className="text-indigo-600 text-sm font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
         </div>
 
@@ -905,7 +905,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
     <div className="space-y-6 text-base">
       <div className="dashboard-heading flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
         <div>
-          <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
+          <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
           <h2 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h2>
           <p className="text-base text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="h-5 w-5" /> {project.location} · Reporting period: 2026</p>
         </div>
