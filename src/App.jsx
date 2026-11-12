@@ -33,7 +33,6 @@ import {
   AlertTriangle,
   Mail,
   BookOpen,
-  Award,
   GraduationCap
 } from 'lucide-react';
 
@@ -60,7 +59,7 @@ try {
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
-// Default Initial M&E Projects
+// Default Initial M&E Projects with Disaggregated Baseline & Target
 const initialProjects = [
   {
     id: 'proj-1',
@@ -70,8 +69,26 @@ const initialProjects = [
     budget: '$30,000',
     location: 'Arusha Region',
     indicators: [
-      { id: 'ind-1', level: 'Outcome', title: '% Water points functional during dry seasons', baseline: 0, target: 77, actual: 0, unit: '%', mappedFieldId: null, calcType: 'PERCENTAGE' },
-      { id: 'ind-2', level: 'Output', title: '# of new or rehabilitated water points', baseline: 0, target: 100, actual: 0, unit: 'number', mappedFieldId: null, calcType: 'SUM' }
+      { 
+        id: 'ind-1', 
+        level: 'Outcome', 
+        title: '% Water points functional during dry seasons', 
+        baseline: { general: 0, male: 0, female: 0, total: 0 }, 
+        target: { general: 77, male: 0, female: 0, total: 77 }, 
+        unit: '%', 
+        mappedFieldId: null, 
+        calcType: 'PERCENTAGE' 
+      },
+      { 
+        id: 'ind-2', 
+        level: 'Output', 
+        title: '# of new or rehabilitated water points', 
+        baseline: { general: 0, male: 0, female: 0, total: 0 }, 
+        target: { general: 100, male: 0, female: 0, total: 100 }, 
+        unit: 'number', 
+        mappedFieldId: null, 
+        calcType: 'SUM' 
+      }
     ],
     forms: [
       {
@@ -105,7 +122,6 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
-  // 1. Fetch live data & license from Firebase Firestore on app load
   useEffect(() => {
     async function fetchCloudData() {
       try {
@@ -132,7 +148,6 @@ export default function App() {
     fetchCloudData();
   }, []);
 
-  // 2. Sync state changes & license to Firebase Firestore automatically
   useEffect(() => {
     if (!isLoadedFromCloud || !db) return;
 
@@ -170,42 +185,38 @@ export default function App() {
     setInstallPrompt(null);
   };
   
-  // Modals & Selectors
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [showEditProjectModal, setShowEditProjectModal] = useState(false);
   const [selectedPrintFormId, setSelectedPrintFormId] = useState('');
   
-  // Project Form State
   const [newProj, setNewProj] = useState({ name: '', code: '', donor: '', budget: '', location: '' });
   const [editProj, setEditProj] = useState({ name: '', code: '', donor: '', budget: '', location: '' });
 
   const currentProject = projects.find(p => p.id === activeProjectId) || projects[0] || { id: '', name: 'No Projects', code: '', indicators: [], forms: [], submissions: [] };
 
-  // Check if trial/license is expired
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
 
   if (!isLoadedFromCloud) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-sm text-slate-400">Syncing [GMEL System](url?id=5) with Firebase...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="text-base text-slate-300">Syncing $GMEL System$(url?id=5) with Firebase...</p>
         </div>
       </div>
     );
   }
 
-  // IF TRIAL EXPIRED, LOCK APP AND SHOW UPGRADE SCREEN AUTOMATICALLY
   if (isExpired) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-white">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-white text-base">
         <div className="max-w-xl w-full">
           <div className="text-center mb-6">
-            <div className="bg-red-600 p-3 rounded-2xl w-fit mx-auto shadow-lg mb-3">
-              <AlertTriangle className="h-8 w-8 text-white" />
+            <div className="bg-red-600 p-4 rounded-2xl w-fit mx-auto shadow-lg mb-3">
+              <AlertTriangle className="h-10 w-10 text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">DEMO PERIOD HAS EXPIRED</h1>
-            <p className="text-sm text-slate-400 mt-1">Your 5-day evaluation trial has ended. Please enter an activation code to continue.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">DEMO PERIOD HAS EXPIRED</h1>
+            <p className="text-base text-slate-300 mt-2">Your 5-day evaluation trial has ended. Please enter an activation code to continue.</p>
           </div>
           
           <LicenseActivationView license={license} setLicense={setLicense} isGateway={true} />
@@ -215,30 +226,29 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans border-t-4 border-indigo-600">
-      {/* Top Header Bar */}
+    <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans text-base border-t-4 border-indigo-600">
       <header className="app-header bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
-        <div className="header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+        <div className="header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-20">
           <div className="brand flex items-center space-x-3">
-            <div className="bg-indigo-600 p-2 rounded-lg shadow-inner">
-              <Layers className="h-6 w-6 text-white" />
+            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-inner">
+              <Layers className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                GMEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">SYSTEM</span>
+              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                GMEL <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2.5 py-1 rounded border border-indigo-400/30">SYSTEM</span>
               </h1>
             </div>
           </div>
 
-          <div className="project-toolbar flex items-center space-x-2 sm:space-x-3">
-            <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
-              <Building2 className="h-4 w-4 text-indigo-400" />
-              <label htmlFor="project-select" className="text-xs text-slate-300 font-medium">Project:</label>
+          <div className="project-toolbar flex items-center space-x-3 sm:space-x-4">
+            <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
+              <Building2 className="h-5 w-5 text-indigo-400" />
+              <label htmlFor="project-select" className="text-sm text-slate-300 font-semibold">Project:</label>
               <select 
                 id="project-select"
                 value={activeProjectId} 
                 onChange={(e) => setActiveProjectId(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer max-w-[150px] sm:max-w-[220px] truncate"
+                className="bg-transparent text-base font-bold text-white focus:outline-none cursor-pointer max-w-[170px] sm:max-w-[240px] truncate"
               >
                 {projects.map(p => (
                   <option key={p.id} value={p.id} className="bg-slate-800 text-white">{p.name} ({p.code})</option>
@@ -252,9 +262,9 @@ export default function App() {
                 onClick={handleInstallApp}
                 aria-label="Install G-MEL app"
                 title="Install G-MEL app"
-                className="install-app-button bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1 transition"
+                className="install-app-button bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 transition"
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-5 w-5" />
                 <span>Install</span>
               </button>
             )}
@@ -271,52 +281,50 @@ export default function App() {
                 setShowEditProjectModal(true);
               }}
               title="Rename or Delete Current Project"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2 rounded-lg font-bold text-xs flex items-center gap-1 transition"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2.5 rounded-xl font-bold text-sm flex items-center gap-1 transition"
             >
-              <Edit2 className="h-4 w-4 text-amber-400" />
+              <Edit2 className="h-5 w-5 text-amber-400" />
             </button>
 
-            {/* QUICK HEADER ACTIONS */}
             <button 
               onClick={() => setActiveTab('mobile')}
               title="Mobile App Sync"
-              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'mobile' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'mobile' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
-              <Smartphone className="h-4 w-4" />
+              <Smartphone className="h-5 w-5" />
               <span className="hidden md:inline">Sync</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('guidelines')}
               title="User Guidelines"
-              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'guidelines' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'guidelines' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
-              <BookOpen className="h-4 w-4" />
+              <BookOpen className="h-5 w-5" />
               <span className="hidden md:inline">Guide</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('license')}
               title="License & Activation"
-              className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition ${activeTab === 'license' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              className={`p-2.5 rounded-xl border text-sm font-bold flex items-center gap-1.5 transition ${activeTab === 'license' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
-              <KeyRound className="h-4 w-4" />
+              <KeyRound className="h-5 w-5" />
               <span className="hidden md:inline">License</span>
             </button>
 
             <button 
               onClick={() => setShowAddProjectModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition shadow-md"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-extrabold text-sm flex items-center gap-2 transition shadow-md"
             >
-              <PlusCircle className="h-4 w-4" />
+              <PlusCircle className="h-5 w-5" />
               New Project
             </button>
           </div>
         </div>
 
-        {/* Core Operational Tab Navigation Menu */}
         <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto">
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
               { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
@@ -331,13 +339,13 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+                  className={`flex items-center space-x-2 px-5 py-3.5 text-base font-bold border-b-2 transition-all whitespace-nowrap ${
                     activeTab === tab.id 
-                      ? 'border-indigo-500 text-indigo-300 bg-slate-900/80 shadow-sm' 
-                      : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      ? 'border-indigo-500 text-indigo-300 bg-slate-900/90 shadow-sm' 
+                      : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-700/60'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -346,8 +354,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main View Area */}
-      <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
+      <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
         {activeTab === 'dashboard' && (
           <DashboardView 
             project={currentProject} 
@@ -489,15 +496,14 @@ export default function App() {
         </div>
       )}
 
-      {/* CREATE NEW PROJECT MODAL */}
       {showAddProjectModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-indigo-600" /> Create New M&amp;E Project
+              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <Building2 className="h-6 w-6 text-indigo-600" /> Create New M&amp;E Project
               </h3>
-              <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+              <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -513,74 +519,73 @@ export default function App() {
               setActiveProjectId(projectObj.id);
               setShowAddProjectModal(false);
               setNewProj({ name: '', code: '', donor: '', budget: '', location: '' });
-            }} className="space-y-3">
+            }} className="space-y-4 text-base">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Project Name *</label>
-                <input type="text" required placeholder="e.g. Sustainable Water Support" value={newProj.name} onChange={(e) => setNewProj({...newProj, name: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Project Name *</label>
+                <input type="text" required placeholder="e.g. Sustainable Water Support" value={newProj.name} onChange={(e) => setNewProj({...newProj, name: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Project Code *</label>
-                  <input type="text" required placeholder="e.g. SWS-2026" value={newProj.code} onChange={(e) => setNewProj({...newProj, code: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-mono" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Project Code *</label>
+                  <input type="text" required placeholder="e.g. SWS-2026" value={newProj.code} onChange={(e) => setNewProj({...newProj, code: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base font-mono" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Total Budget</label>
-                  <input type="text" placeholder="e.g. $300,000" value={newProj.budget} onChange={(e) => setNewProj({...newProj, budget: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Total Budget</label>
+                  <input type="text" placeholder="e.g. $300,000" value={newProj.budget} onChange={(e) => setNewProj({...newProj, budget: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Donor / Partner</label>
-                <input type="text" placeholder="e.g. USAID" value={newProj.donor} onChange={(e) => setNewProj({...newProj, donor: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Donor / Partner</label>
+                <input type="text" placeholder="e.g. USAID" value={newProj.donor} onChange={(e) => setNewProj({...newProj, donor: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Location / Target Region</label>
-                <input type="text" placeholder="e.g. Arusha Region" value={newProj.location} onChange={(e) => setNewProj({...newProj, location: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Location / Target Region</label>
+                <input type="text" placeholder="e.g. Arusha Region" value={newProj.location} onChange={(e) => setNewProj({...newProj, location: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
               </div>
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-                <button type="button" onClick={() => setShowAddProjectModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Create Project</button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                <button type="button" onClick={() => setShowAddProjectModal(false)} className="px-5 py-2.5 text-base font-bold text-slate-600 border border-slate-300 rounded-xl">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 text-base bg-indigo-600 text-white font-extrabold rounded-xl hover:bg-indigo-700">Create Project</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* EDIT PROJECT MODAL */}
       {showEditProjectModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                <Edit2 className="h-5 w-5 text-indigo-600" /> Edit Project Details
+              <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <Edit2 className="h-6 w-6 text-indigo-600" /> Edit Project Details
               </h3>
-              <button onClick={() => setShowEditProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+              <button onClick={() => setShowEditProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
               setProjects(prev => prev.map(p => p.id === currentProject.id ? { ...p, ...editProj } : p));
               setShowEditProjectModal(false);
-            }} className="space-y-3">
+            }} className="space-y-4 text-base">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Project Name</label>
-                <input type="text" required value={editProj.name} onChange={(e) => setEditProj({...editProj, name: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Project Name</label>
+                <input type="text" required value={editProj.name} onChange={(e) => setEditProj({...editProj, name: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base font-bold" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Project Code</label>
-                  <input type="text" required value={editProj.code} onChange={(e) => setEditProj({...editProj, code: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-mono" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Project Code</label>
+                  <input type="text" required value={editProj.code} onChange={(e) => setEditProj({...editProj, code: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base font-mono" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Total Budget</label>
-                  <input type="text" value={editProj.budget} onChange={(e) => setEditProj({...editProj, budget: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Total Budget</label>
+                  <input type="text" value={editProj.budget} onChange={(e) => setEditProj({...editProj, budget: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Donor / Partner</label>
-                <input type="text" value={editProj.donor} onChange={(e) => setEditProj({...editProj, donor: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Donor / Partner</label>
+                <input type="text" value={editProj.donor} onChange={(e) => setEditProj({...editProj, donor: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Location</label>
-                <input type="text" value={editProj.location} onChange={(e) => setEditProj({...editProj, location: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Location</label>
+                <input type="text" value={editProj.location} onChange={(e) => setEditProj({...editProj, location: e.target.value})} className="w-full border border-slate-300 rounded-xl p-3 text-base" />
               </div>
               <div className="flex justify-between items-center pt-4 border-t border-slate-200">
                 <button 
@@ -596,13 +601,13 @@ export default function App() {
                     setActiveProjectId(remaining[0].id);
                     setShowEditProjectModal(false);
                   }} 
-                  className="px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 flex items-center gap-1"
+                  className="px-4 py-2.5 text-sm font-extrabold text-red-700 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 flex items-center gap-1.5"
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> Delete Project
+                  <Trash2 className="h-4 w-4" /> Delete Project
                 </button>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowEditProjectModal(false)} className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-300 rounded-lg">Cancel</button>
-                  <button type="submit" className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Save Changes</button>
+                  <button type="button" onClick={() => setShowEditProjectModal(false)} className="px-4 py-2.5 text-base font-bold text-slate-600 border border-slate-300 rounded-xl">Cancel</button>
+                  <button type="submit" className="px-4 py-2.5 text-base bg-indigo-600 text-white font-extrabold rounded-xl hover:bg-indigo-700">Save Changes</button>
                 </div>
               </div>
             </form>
@@ -613,16 +618,27 @@ export default function App() {
   );
 }
 
+// Helper to compute disaggregated actual values based on linked form fields
 function getCalculatedActual(project, ind) {
-  if (!ind.mappedFieldId) return ind.baseline || 0;
-  const values = project.submissions.map(sub => Number(sub.data[ind.mappedFieldId])).filter(v => !isNaN(v));
-  if (values.length === 0) return ind.baseline || 0;
+  const defaultVal = { general: 0, male: 0, female: 0, total: 0 };
+  if (!ind.mappedFieldId) return ind.baseline || defaultVal;
 
-  if (ind.calcType === 'AVG') return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
-  if (ind.calcType === 'COUNT') return values.length;
-  if (ind.calcType === 'MAX') return Math.max(...values);
-  if (ind.calcType === 'PERCENTAGE') return ((values.filter(v => v > 0).length / values.length) * 100).toFixed(0);
-  return values.reduce((a, b) => a + b, 0);
+  const values = project.submissions.map(sub => Number(sub.data[ind.mappedFieldId])).filter(v => !isNaN(v));
+  if (values.length === 0) return ind.baseline || defaultVal;
+
+  let computedVal = 0;
+  if (ind.calcType === 'AVG') computedVal = Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1));
+  else if (ind.calcType === 'COUNT') computedVal = values.length;
+  else if (ind.calcType === 'MAX') computedVal = Math.max(...values);
+  else if (ind.calcType === 'PERCENTAGE') computedVal = Number(((values.filter(v => v > 0).length / values.length) * 100).toFixed(0));
+  else computedVal = values.reduce((a, b) => a + b, 0);
+
+  return {
+    general: computedVal,
+    male: 0,
+    female: 0,
+    total: computedVal
+  };
 }
 
 function exportCSV(dataArray, filename) {
@@ -643,10 +659,9 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
-// USER GUIDELINES COMPONENT WITH GABRIEL'S PROFESSIONAL PROFILE
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Project Management\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Automated Mapping\n4. Custom Reports & Scorecard\n5. Advanced Form Builder (GPS, Photos, Ratings)\n6. Field Data Submission\n7. Data Export Suite & Full System Backups\n8. Mobile App Sync (Firebase Firestore)`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Project Management\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Disaggregated General, Male, Female, and Total Metrics\n4. Custom Reports & Scorecard\n5. Advanced Form Builder (GPS, Photos, Ratings)\n6. Field Data Submission\n7. Data Export Suite & Full System Backups\n8. Mobile App Sync (Firebase Firestore)`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -656,71 +671,64 @@ function UserGuidelinesView() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-indigo-600" /> System User Guidelines &amp; Documentation
+          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+            <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-sm text-slate-500">Official system manual for the Gabriel Monitoring, Evaluation and Learning (GMEL) System.</p>
+          <p className="text-base text-slate-600 mt-1">Official manual for the [Gabriel Monitoring, Evaluation and Learning System](url?id=5).</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-slate-800">
-            <Printer className="h-4 w-4" /> Print Guide
+        <div className="flex gap-2.5">
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-5 w-5" /> Print Guide
           </button>
-          <button onClick={downloadPDFGuidelines} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow hover:bg-indigo-700">
-            <Download className="h-4 w-4" /> Download Guide
+          <button onClick={downloadPDFGuidelines} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
+            <Download className="h-5 w-5" /> Download Guide
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-sm">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-base leading-relaxed">
         <div className="border-b pb-4">
-          <h1 className="text-2xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
-          <p className="text-indigo-600 text-xs font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
+          <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
+          <p className="text-indigo-600 text-sm font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
         </div>
 
-        {/* FOUNDER BACKGROUND & EXPERIENCE BOX */}
-        <div className="bg-indigo-50/80 p-5 rounded-2xl border border-indigo-200 space-y-3">
-          <h3 className="text-sm font-extrabold text-indigo-900 uppercase flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-indigo-600" /> About the Founder &amp; System Background
+        <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
+          <h3 className="text-base font-black text-indigo-900 uppercase flex items-center gap-2.5">
+            <GraduationCap className="h-6 w-6 text-indigo-600" /> About the Founder &amp; System Background
           </h3>
-          <p className="text-xs text-slate-700 leading-relaxed">
-            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), the founder and owner of the system. Officially designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform is meticulously engineered to reflect over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+          <p className="text-base text-slate-700">
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            <div className="bg-white p-3 rounded-xl border border-indigo-100 text-xs">
-              <span className="font-bold text-indigo-800 block">Academic Background</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
+              <span className="font-bold text-indigo-800 block text-base">Academic Background</span>
               <span className="text-slate-600">Bachelor&apos;s degree in Statistics and Mathematics &amp; Master&apos;s degree in Monitoring and Evaluation.</span>
             </div>
-            <div className="bg-white p-3 rounded-xl border border-indigo-100 text-xs">
-              <span className="font-bold text-indigo-800 block">Core Competencies &amp; Experience</span>
-              <span className="text-slate-600">Specializes in capacity building, project initiation, planning, implementation, Data Quality Assessments (DQAs), statistical analysis, learning, and donor reporting.</span>
+            <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm">
+              <span className="font-bold text-indigo-800 block text-base">Core Competencies &amp; Experience</span>
+              <span className="text-slate-600">Capacity building, project initiation, planning, implementation, Data Quality Assessments (DQAs), statistical analysis, learning, and donor reporting.</span>
             </div>
           </div>
         </div>
 
         <div className="space-y-4 pt-2">
-          <h3 className="font-bold text-base text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
-          <p>Located at the top of your screen, the persistent header allows you to switch projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
+          <p>Instantly switch active projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives from the top navigation bar.</p>
 
-          <h3 className="font-bold text-base text-indigo-700">2. Dashboard &amp; Visuals</h3>
-          <p>Serves as your executive command center. View KPI metrics including your Project Code, donor funding, active indicator counts, and total survey submissions alongside visual progress bars and level breakdowns.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">2. Dashboard &amp; Visuals</h3>
+          <p>Executive command center displaying KPI metrics, project codes, donor funding, active indicator totals, and disaggregated progress breakdowns.</p>
 
-          <h3 className="font-bold text-base text-indigo-700">3. Logical Framework Matrix (Logframe)</h3>
-          <p>Manage your results framework. Link any indicator directly to a specific question inside your survey forms and choose an automated calculation method (SUM, AVG, COUNT, MAX, or PERCENTAGE) so incoming field data updates totals automatically.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">3. Logical Framework Matrix (Logframe) with Demographic Disaggregation</h3>
+          <p>Track Baselines, Targets, and Actuals across <strong>General</strong> (e.g., number of schools or water points), <strong>Male</strong>, <strong>Female</strong>, and <strong>Total</strong>. Link indicators directly to survey questions for automated calculations.</p>
 
-          <h3 className="font-bold text-base text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
-          <p>Provides a donor-ready tabular summary of indicator achievements against targets. Supports one-click printing and PDF exports via your browser.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
+          <p>Donor-ready summary reports and performance scorecards supporting one-click printing.</p>
 
-          <h3 className="font-bold text-base text-indigo-700">5. Advanced Form Builder</h3>
-          <p>Design surveys with rich question types including short text, numeric quantities, dropdowns, GPS coordinates, photo captures, observation notes, and 1-5 star ratings.</p>
-
-          <h3 className="font-bold text-base text-indigo-700">6. Field Data Submission</h3>
-          <p>Used by field enumerators to record responses. Features instant GPS capture via device location services and a live database grid to review or delete logs.</p>
-
-          <h3 className="font-bold text-base text-indigo-700">7. Data Export Suite &amp; Mobile Sync</h3>
-          <p>Export raw CSV submissions and logframe reports or download full JSON system backups. The system connects securely to Firebase Firestore for real-time multi-device cloud synchronization.</p>
+          <h3 className="font-extrabold text-lg text-indigo-700">5. Advanced Form Builder &amp; Data Submission</h3>
+          <p>Design multi-question surveys with GPS capture, photo uploads, notes, ratings, and instant cloud synchronization via Firebase Firestore.</p>
         </div>
       </div>
     </div>
@@ -745,71 +753,75 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
   }).join(', ');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="dashboard-heading flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <div className="text-xs font-bold text-indigo-600 uppercase">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
-          <h2 className="text-xl font-black text-slate-900 mt-0.5">{project.name}</h2>
-          <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><MapPin className="h-4 w-4" /> {project.location} · Reporting period: 2026</p>
+          <div className="text-sm font-extrabold text-indigo-600 uppercase tracking-wide">GABRIEL MONITORING, EVALUATION &amp; LEARNING WORKSPACE</div>
+          <h2 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h2>
+          <p className="text-base text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="h-5 w-5" /> {project.location} · Reporting period: 2026</p>
         </div>
-        <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition">
-          <Edit2 className="h-4 w-4" /> Edit project
+        <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition">
+          <Edit2 className="h-5 w-5" /> Edit project
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Project Code</p>
-            <h3 className="text-xl font-extrabold text-slate-900 font-mono mt-0.5">{project.code}</h3>
+            <p className="text-sm font-extrabold text-slate-500 uppercase">Project Code</p>
+            <h3 className="text-2xl font-black text-slate-900 font-mono mt-1">{project.code}</h3>
           </div>
-          <Building2 className="h-9 w-9 text-indigo-600 bg-indigo-50 p-2 rounded-xl border border-indigo-100" />
+          <Building2 className="h-10 w-10 text-indigo-600 bg-indigo-50 p-2.5 rounded-xl border border-indigo-100" />
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Donor Funding</p>
-            <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">{project.budget}</h3>
-            <p className="text-xs text-slate-600 truncate max-w-[130px] font-medium">{project.donor}</p>
+            <p className="text-sm font-extrabold text-slate-500 uppercase">Donor Funding</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{project.budget}</h3>
+            <p className="text-sm text-slate-600 truncate max-w-[150px] font-bold">{project.donor}</p>
           </div>
-          <DollarSign className="h-9 w-9 text-emerald-600 bg-emerald-50 p-2 rounded-xl border border-emerald-100" />
+          <DollarSign className="h-10 w-10 text-emerald-600 bg-emerald-50 p-2.5 rounded-xl border border-emerald-100" />
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Active Indicators</p>
-            <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">{project.indicators.length}</h3>
+            <p className="text-sm font-extrabold text-slate-500 uppercase">Active Indicators</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{project.indicators.length}</h3>
           </div>
-          <TrendingUp className="h-9 w-9 text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100" />
+          <TrendingUp className="h-10 w-10 text-blue-600 bg-blue-50 p-2.5 rounded-xl border border-blue-100" />
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Total Submissions</p>
-            <h3 className="text-xl font-extrabold text-slate-900 mt-0.5">{project.submissions.length}</h3>
+            <p className="text-sm font-extrabold text-slate-500 uppercase">Total Submissions</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{project.submissions.length}</h3>
           </div>
-          <Database className="h-9 w-9 text-amber-600 bg-amber-50 p-2 rounded-xl border border-amber-100" />
+          <Database className="h-10 w-10 text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-indigo-600" /> Indicator Target vs. Calculated Progress
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Target vs. Calculated Progress
             </h3>
           </div>
           <div className="space-y-5 pt-2">
             {project.indicators.map(ind => {
-              const actual = Number(getCalculatedActual(project, ind));
-              const target = ind.target || 1;
-              const pct = Math.min(100, Math.max(0, Math.round(((actual - ind.baseline) / (target - ind.baseline || 1)) * 100)));
+              const actualObj = getCalculatedActual(project, ind);
+              const actualVal = actualObj.total || actualObj.general || 0;
+              const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+              const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100));
+
               return (
-                <div key={ind.id} className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-start text-xs font-bold">
-                    <span className="text-slate-800 text-sm font-semibold">{ind.title}</span>
-                    <span className="bg-indigo-100 text-indigo-900 font-mono px-2.5 py-1 rounded-md border border-indigo-200">
-                      {actual} / {target} {ind.unit} ({pct}%)
+                <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="flex justify-between items-start text-sm font-bold">
+                    <span className="text-slate-900 text-base font-bold">{ind.title}</span>
+                    <span className="bg-indigo-100 text-indigo-900 font-mono px-3 py-1 rounded-lg border border-indigo-200 text-sm">
+                      {actualVal} / {targetVal} {ind.unit} ({pct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden flex border border-slate-300">
-                    <div className="bg-indigo-600 h-3.5 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, pct)}%` }}></div>
+                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden flex border border-slate-300">
+                    <div className="bg-indigo-600 h-4 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, pct)}%` }}></div>
                   </div>
                 </div>
               );
@@ -819,24 +831,24 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-              <PieChart className="h-5 w-5 text-indigo-600" /> Indicator Level Breakdown
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
+              <PieChart className="h-6 w-6 text-indigo-600" /> Indicator Level Breakdown
             </h3>
             <div className="py-6 flex justify-center">
-              <div className="w-32 h-32 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
-                <div className="absolute w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center shadow">
-                  <strong className="text-base font-extrabold text-slate-900">{totalIndicators}</strong>
-                  <span className="text-[10px] uppercase font-bold text-slate-500">indicators</span>
+              <div className="w-36 h-36 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
+                <div className="absolute w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center shadow">
+                  <strong className="text-xl font-black text-slate-900">{totalIndicators}</strong>
+                  <span className="text-xs uppercase font-extrabold text-slate-500">indicators</span>
                 </div>
               </div>
             </div>
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-sm">
               {levels.map(({ name: lvl, color }) => {
                 const count = project.indicators.filter(i => i.level === lvl).length;
                 return (
-                  <div key={lvl} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800 flex items-center gap-2"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: color }} />{lvl} level</span>
-                    <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">{count}</span>
+                  <div key={lvl} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="font-bold text-slate-800 flex items-center gap-2.5"><span className="w-3.5 h-3.5 rounded-full inline-block" style={{ backgroundColor: color }} />{lvl} level</span>
+                    <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-300 font-extrabold">{count}</span>
                   </div>
                 );
               })}
@@ -851,25 +863,38 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 function LogframeView({ project, getCalculatedActual, setProjects }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
-  const [newInd, setNewInd] = useState({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+  
+  // Indicator state with disaggregation for General, Male, Female, Total
+  const [newInd, setNewInd] = useState({ 
+    level: 'Output', 
+    title: '', 
+    baseline: { general: 0, male: 0, female: 0, total: 0 },
+    target: { general: 100, male: 0, female: 0, total: 100 },
+    unit: 'Units' 
+  });
 
   const handleAddIndicator = () => {
     if (!newInd.title.trim()) return;
-    const indicatorObj = { ...newInd, id: createId('ind'), actual: newInd.baseline, mappedFieldId: null, calcType: 'SUM' };
+    const indicatorObj = { 
+      ...newInd, 
+      id: createId('ind'), 
+      mappedFieldId: null, 
+      calcType: 'SUM' 
+    };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     setShowAddModal(false);
-    setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
   };
 
-  const openIndicatorEditor = (indicator) => {
+  const openIndicatorEditor = (ind) => {
     setNewInd({
-      level: indicator.level,
-      title: indicator.title,
-      baseline: indicator.baseline,
-      target: indicator.target,
-      unit: indicator.unit
+      level: ind.level,
+      title: ind.title,
+      baseline: typeof ind.baseline === 'object' ? ind.baseline : { general: ind.baseline || 0, male: 0, female: 0, total: ind.baseline || 0 },
+      target: typeof ind.target === 'object' ? ind.target : { general: ind.target || 100, male: 0, female: 0, total: ind.target || 100 },
+      unit: ind.unit
     });
-    setEditingIndicatorId(indicator.id);
+    setEditingIndicatorId(ind.id);
     setShowAddModal(true);
   };
 
@@ -886,7 +911,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
     }));
     setEditingIndicatorId(null);
     setShowAddModal(false);
-    setNewInd({ level: 'Output', title: '', baseline: 0, target: 100, unit: 'Units' });
+    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
   };
 
   const handleDeleteIndicator = (indicator) => {
@@ -905,62 +930,77 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Logical Framework (Logframe) Matrix</h2>
-          <p className="text-sm text-slate-500">Indicators update automatically as linked field submissions arrive.</p>
+          <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix</h2>
+          <p className="text-base text-slate-600 mt-1">Manage indicators with disaggregated demographic metrics (General, Male, Female, Total).</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
-          <PlusCircle className="h-4 w-4" /> Add Indicator
+        <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
+          <PlusCircle className="h-5 w-5" /> Add Indicator
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[1000px]">
           <thead>
-            <tr className="bg-slate-100 text-slate-700 text-xs uppercase font-bold border-b border-slate-200">
+            <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b border-slate-200">
               <th className="p-4">Level</th>
               <th className="p-4">Indicator Statement</th>
-              <th className="p-4 text-center">Baseline</th>
-              <th className="p-4 text-center">Target</th>
-              <th className="p-4 text-center">Calculated Actual</th>
-              <th className="p-4 text-center">Progress</th>
+              <th className="p-4 text-center">Baseline (Gen / M / F / Tot)</th>
+              <th className="p-4 text-center">Target (Gen / M / F / Tot)</th>
+              <th className="p-4 text-center">Actual (Gen / M / F / Tot)</th>
               <th className="p-4">Automated Data Mapping</th>
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 text-sm">
+          <tbody className="divide-y divide-slate-200 text-base">
             {project.indicators.map((ind) => {
               const actual = getCalculatedActual(project, ind);
-              const pct = Math.min(100, Math.round(((actual - ind.baseline) / (ind.target - ind.baseline || 1)) * 100));
+              const baseline = typeof ind.baseline === 'object' ? ind.baseline : { general: ind.baseline || 0, male: 0, female: 0, total: ind.baseline || 0 };
+              const target = typeof ind.target === 'object' ? ind.target : { general: ind.target || 0, male: 0, female: 0, total: ind.target || 0 };
+
               const availableFields = project.forms.flatMap(f => f.fields.map(field => ({
                 fieldId: field.id, label: `${f.title} → ${field.label}`
               })));
 
               return (
                 <tr key={ind.id} className="hover:bg-slate-50">
-                  <td className="p-4 font-bold">
-                    <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold border bg-indigo-50 text-indigo-800 border-indigo-200">{ind.level}</span>
+                  <td className="p-4 font-bold align-top">
+                    <span className="inline-block px-3 py-1 rounded-lg text-sm font-extrabold border bg-indigo-50 text-indigo-900 border-indigo-200">{ind.level}</span>
                   </td>
-                  <td className="p-4 font-semibold text-slate-900">{ind.title}</td>
-                  <td className="p-4 text-center font-mono text-slate-600">{ind.baseline} {ind.unit}</td>
-                  <td className="p-4 text-center font-mono font-bold text-slate-800">{ind.target} {ind.unit}</td>
-                  <td className="p-4 text-center font-mono font-extrabold text-indigo-700 bg-indigo-50/80">{actual} {ind.unit}</td>
-                  <td className="p-4 text-center">
-                    <div className="w-28 mx-auto">
-                      <div className="text-xs font-bold mb-1 text-slate-700">{pct}%</div>
-                      <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden border border-slate-300">
-                        <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${Math.max(0, pct)}%` }}></div>
-                      </div>
+                  <td className="p-4 font-bold text-slate-900 align-top max-w-xs">{ind.title}</td>
+                  
+                  {/* Baseline Disaggregated */}
+                  <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">
+                    <div className="bg-slate-100 p-2 rounded-xl border border-slate-200 space-y-1">
+                      <div>Gen: <strong className="text-slate-900">{baseline.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-slate-500">M: {baseline.male} | F: {baseline.female} | Tot: <strong>{baseline.total}</strong></div>
                     </div>
                   </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
+
+                  {/* Target Disaggregated */}
+                  <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
+                    <div className="bg-slate-100 p-2 rounded-xl border border-slate-200 space-y-1">
+                      <div>Gen: <strong className="text-indigo-900">{target.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-slate-600">M: {target.male} | F: {target.female} | Tot: <strong className="text-slate-900">{target.total}</strong></div>
+                    </div>
+                  </td>
+
+                  {/* Actual Disaggregated */}
+                  <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top">
+                    <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
+                      <div>Gen: <strong className="text-indigo-700">{actual.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-indigo-600">M: {actual.male} | F: {actual.female} | Tot: <strong className="font-extrabold">{actual.total}</strong></div>
+                    </div>
+                  </td>
+
+                  <td className="p-4 align-top">
+                    <div className="flex flex-col gap-2">
                       <select
                         value={ind.mappedFieldId || ''}
                         onChange={(e) => handleMapField(ind.id, e.target.value || null, ind.calcType || 'SUM')}
-                        className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 shadow-sm"
+                        className="text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-800 shadow-sm"
                       >
                         <option value="">Manual Entry (No Form Linked)</option>
                         {availableFields.map(f => (<option key={f.fieldId} value={f.fieldId}>🔗 {f.label}</option>))}
@@ -969,7 +1009,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                         <select
                           value={ind.calcType || 'SUM'}
                           onChange={(e) => handleMapField(ind.id, ind.mappedFieldId, e.target.value)}
-                          className="text-xs font-bold bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-lg px-2 py-1.5"
+                          className="text-xs font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl px-2.5 py-1.5"
                         >
                           <option value="SUM">SUM</option>
                           <option value="AVG">AVG</option>
@@ -980,13 +1020,14 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                       )}
                     </div>
                   </td>
-                  <td className="p-4">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-lg p-2 text-slate-500 hover:bg-indigo-50 hover:text-indigo-700">
-                        <Edit2 className="h-4 w-4" />
+
+                  <td className="p-4 text-right align-top">
+                    <div className="flex justify-end gap-1.5">
+                      <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200">
+                        <Edit2 className="h-5 w-5" />
                       </button>
-                      <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
+                      <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700 border border-slate-200">
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </div>
                   </td>
@@ -999,26 +1040,69 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 border-b pb-2">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add New Logframe Indicator'}</h3>
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-8 space-y-5 text-base">
+            <h3 className="text-xl font-black text-slate-900 border-b pb-3">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add Disaggregated Indicator'}</h3>
+            
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Hierarchy Level</label>
-              <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm">
+              <label className="block text-sm font-bold text-slate-700 mb-1">Hierarchy Level</label>
+              <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold bg-white">
                 <option value="Impact">Impact</option><option value="Outcome">Outcome</option><option value="Output">Output</option><option value="Activity">Activity</option>
               </select>
             </div>
+
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Indicator Statement</label>
-              <input type="text" placeholder="e.g. Number of households trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" />
+              <label className="block text-sm font-bold text-slate-700 mb-1">Indicator Statement</label>
+              <input type="text" placeholder="e.g. Number of schools or households trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div><label className="block text-xs font-bold mb-1">Baseline</label><input type="number" value={newInd.baseline} onChange={(e) => setNewInd({...newInd, baseline: parseFloat(e.target.value) || 0})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
-              <div><label className="block text-xs font-bold mb-1">Target</label><input type="number" value={newInd.target} onChange={(e) => setNewInd({...newInd, target: parseFloat(e.target.value) || 0})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
-              <div><label className="block text-xs font-bold mb-1">Unit</label><input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-lg p-2.5 text-sm" /></div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Unit of Measure</label>
+                <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base" />
+              </div>
             </div>
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <button onClick={() => { setShowAddModal(false); setEditingIndicatorId(null); }} className="px-4 py-2 text-sm border rounded-lg">Cancel</button>
-              <button onClick={handleSaveIndicator} className="px-4 py-2 text-sm bg-indigo-600 text-white font-bold rounded-lg">Save Indicator</button>
+
+            {/* Disaggregated Baseline Inputs */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-sm font-extrabold text-slate-800">Baseline Disaggregation (General, Male, Female)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General (Schools/Items)</span>
+                  <input type="number" value={newInd.baseline.general} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Male</span>
+                  <input type="number" value={newInd.baseline.male} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, male: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Female</span>
+                  <input type="number" value={newInd.baseline.female} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, female: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* Disaggregated Target Inputs */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-sm font-extrabold text-slate-800">Target Disaggregation (General, Male, Female)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General</span>
+                  <input type="number" value={newInd.target.general} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Male</span>
+                  <input type="number" value={newInd.target.male} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, male: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Female</span>
+                  <input type="number" value={newInd.target.female} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, female: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <button onClick={() => { setShowAddModal(false); setEditingIndicatorId(null); }} className="px-5 py-2.5 text-base border rounded-xl font-bold">Cancel</button>
+              <button onClick={handleSaveIndicator} className="px-5 py-2.5 text-base bg-indigo-600 text-white font-extrabold rounded-xl shadow">Save Indicator</button>
             </div>
           </div>
         </div>
@@ -1077,89 +1161,89 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
   const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
   return (
-    <div className={`mx-auto space-y-6 ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
+    <div className={`mx-auto space-y-6 text-base ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
       {!isGateway && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <KeyRound className="h-6 w-6 text-indigo-600" /> System License &amp; Activation
+          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+            <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
           </h2>
-          <p className="text-sm text-slate-500">Manage your subscription tier and system activation keys.</p>
+          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
-            <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
-            <p className="text-xs text-slate-600 mt-2">Trial code for testing features.</p>
+            <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
+            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
           </div>
-          <div className="mt-4 pt-3 border-t">
+          <div className="mt-5 pt-4 border-t">
             <button 
               onClick={() => activateCode('DEMO-5DAYS')}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2"
             >
               🚀 Activate Free Demo
             </button>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
-            <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
-            <p className="text-xs text-slate-600 mt-2">Full access for 365 days.</p>
+            <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
+            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
           </div>
-          <div className="mt-4 pt-3 border-t">
+          <div className="mt-5 pt-4 border-t">
             <a 
               href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
             >
-              <Mail className="h-4 w-4" /> Request via Email
+              <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
-            <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
-            <p className="text-xs text-slate-600 mt-2">Permanent license, never expires.</p>
+            <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
           </div>
-          <div className="mt-4 pt-3 border-t">
+          <div className="mt-5 pt-4 border-t">
             <a 
               href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
             >
-              <Mail className="h-4 w-4" /> Request via Email
+              <Mail className="h-5 w-5" /> Request via Email
             </a>
           </div>
         </div>
       </div>
 
-      <div className={`p-6 rounded-2xl shadow-sm border space-y-5 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
+      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
         {!isGateway && (
           <div className="flex items-center justify-between border-b pb-4">
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Current Active License Status</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
+              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
             </div>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
-              {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
               {isExpired ? 'Expired' : 'Active'}
             </span>
           </div>
         )}
 
         {!isGateway && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div className="bg-slate-50 p-4 rounded-xl border">
-              <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
-              <p className="font-bold text-slate-900 mt-1">{license.level}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-base">
+            <div className="bg-slate-50 p-5 rounded-2xl border">
+              <p className="text-sm font-extrabold text-slate-500 uppercase">Tier Level</p>
+              <p className="font-black text-slate-900 mt-1 text-lg">{license.level}</p>
             </div>
-            <div className="bg-slate-50 p-4 rounded-xl border">
-              <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
-              <p className="font-bold text-indigo-600 mt-1">
+            <div className="bg-slate-50 p-5 rounded-2xl border">
+              <p className="text-sm font-extrabold text-slate-500 uppercase">Validity / Remaining</p>
+              <p className="font-black text-indigo-600 mt-1 text-lg">
                 {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
               </p>
             </div>
@@ -1167,17 +1251,17 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         )}
 
         <form onSubmit={handleActivate} className="space-y-3 pt-2">
-          <label className="block text-xs font-bold text-slate-700">Have an Activation Code? Enter it here:</label>
-          <div className="flex gap-2">
+          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
+          <div className="flex gap-3">
             <input 
               type="text" 
               required
               placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
-              className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm text-slate-900"
+              className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold"
             />
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow">
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">
               Activate Key
             </button>
           </div>
@@ -1189,61 +1273,64 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
 
 function CustomReportsView({ project, getCalculatedActual }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Custom Reports &amp; Scorecard</h2>
-          <p className="text-sm text-slate-500">Donor-ready summary report for {project.name}.</p>
+          <h2 className="text-2xl font-black text-slate-900">Custom Reports &amp; Scorecard</h2>
+          <p className="text-base text-slate-600 mt-1">Donor-ready summary report for {project.name}.</p>
         </div>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800 print:hidden">
-          <Printer className="h-4 w-4" /> Print Report
+        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800 print:hidden">
+          <Printer className="h-5 w-5" /> Print Report
         </button>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
         <div className="border-b pb-4 flex justify-between items-start">
           <div>
-            <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded font-bold">{project.code}</span>
-            <h1 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h1>
-            <p className="text-sm text-slate-600 mt-0.5"><MapPin className="h-4 w-4 inline mr-1" /> {project.location}</p>
+            <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg font-bold">{project.code}</span>
+            <h1 className="text-3xl font-black text-slate-900 mt-1.5">{project.name}</h1>
+            <p className="text-base text-slate-600 mt-1"><MapPin className="h-5 w-5 inline mr-1" /> {project.location}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-500 uppercase font-bold">Donor Partner</p>
-            <p className="text-sm font-bold text-slate-900">{project.donor}</p>
-            <p className="text-xs text-emerald-600 font-bold mt-1">Budget: {project.budget}</p>
+            <p className="text-xs text-slate-500 uppercase font-extrabold">Donor Partner</p>
+            <p className="text-base font-bold text-slate-900">{project.donor}</p>
+            <p className="text-sm text-emerald-600 font-extrabold mt-1">Budget: {project.budget}</p>
           </div>
         </div>
 
         <div>
-          <h3 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-indigo-600" /> Executive Indicator Performance Scorecard
+          <h3 className="text-lg font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-indigo-600" /> Executive Indicator Performance Scorecard
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
+            <table className="w-full text-left text-base border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 text-xs uppercase font-bold border-b">
-                  <th className="p-3">Level</th>
-                  <th className="p-3">Indicator Statement</th>
-                  <th className="p-3 text-center">Baseline</th>
-                  <th className="p-3 text-center">Target</th>
-                  <th className="p-3 text-center">Actual</th>
-                  <th className="p-3 text-center">Status</th>
+                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
+                  <th className="p-4">Level</th>
+                  <th className="p-4">Indicator Statement</th>
+                  <th className="p-4 text-center">Baseline</th>
+                  <th className="p-4 text-center">Target</th>
+                  <th className="p-4 text-center">Actual</th>
+                  <th className="p-4 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {project.indicators.map(ind => {
-                  const actual = Number(getCalculatedActual(project, ind));
-                  const target = ind.target || 1;
-                  const pct = Math.min(100, Math.round(((actual - ind.baseline) / (target - ind.baseline || 1)) * 100));
+                  const actualObj = getCalculatedActual(project, ind);
+                  const actual = actualObj.total || actualObj.general || 0;
+                  const target = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+                  const base = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+                  const pct = Math.min(100, Math.round(((actual - base) / (target - base || 1)) * 100));
+
                   return (
                     <tr key={ind.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-bold"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded text-xs border">{ind.level}</span></td>
-                      <td className="p-3 font-semibold text-slate-900">{ind.title}</td>
-                      <td className="p-3 text-center font-mono text-slate-600">{ind.baseline} {ind.unit}</td>
-                      <td className="p-3 text-center font-mono font-bold text-slate-800">{ind.target} {ind.unit}</td>
-                      <td className="p-3 text-center font-mono font-extrabold text-indigo-700">{actual} {ind.unit}</td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                      <td className="p-4 font-bold"><span className="px-3 py-1 bg-indigo-50 text-indigo-900 rounded-lg text-sm border font-extrabold">{ind.level}</span></td>
+                      <td className="p-4 font-bold text-slate-900">{ind.title}</td>
+                      <td className="p-4 text-center font-mono text-slate-600">{base} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-bold text-slate-800">{target} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-black text-indigo-700">{actual} {ind.unit}</td>
+                      <td className="p-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-sm font-extrabold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
                           {pct}% Achieved
                         </span>
                       </td>
@@ -1304,42 +1391,42 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">Advanced Form Generator</h2>
-        <p className="text-sm text-slate-500">Design surveys with GPS, Photos, Notes, Ratings, and Skip Logic for {project.name}.</p>
+        <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
+        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Notes, Ratings for {project.name}.</p>
       </div>
 
       {project.forms.length > 0 && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <h3 className="text-base font-bold text-slate-900 border-b pb-2">Active Project Forms ({project.forms.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Active Project Forms ({project.forms.length})</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {project.forms.map(form => (
-              <div key={form.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <div key={form.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between">
                 {editingFormId === form.id ? (
-                  <div className="space-y-2">
-                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded p-1.5 text-sm font-bold bg-white" />
-                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded p-1.5 text-xs bg-white h-14" />
-                    <div className="flex justify-end gap-2 pt-1">
-                      <button onClick={() => setEditingFormId(null)} className="px-2.5 py-1 text-xs border rounded bg-white">Cancel</button>
-                      <button onClick={() => { onRenameForm(form.id, editTitle, editDesc); setEditingFormId(null); }} className="px-2.5 py-1 text-xs text-white bg-indigo-600 rounded">Save</button>
+                  <div className="space-y-3">
+                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-2.5 text-base font-bold bg-white" />
+                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-2.5 text-sm bg-white h-20" />
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button onClick={() => setEditingFormId(null)} className="px-3 py-1.5 text-sm border rounded-xl bg-white font-bold">Cancel</button>
+                      <button onClick={() => { onRenameForm(form.id, editTitle, editDesc); setEditingFormId(null); }} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-xl font-bold">Save</button>
                     </div>
                   </div>
                 ) : (
                   <>
                     <div>
                       <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-slate-900 text-sm">{form.title}</h4>
-                        <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded font-mono text-slate-600 font-bold">{form.fields.length} Fields</span>
+                        <h4 className="font-extrabold text-slate-900 text-base">{form.title}</h4>
+                        <span className="text-xs bg-slate-200 px-2.5 py-1 rounded-lg font-mono text-slate-700 font-bold">{form.fields.length} Fields</span>
                       </div>
-                      {form.description && <p className="text-xs text-slate-500 mt-1">{form.description}</p>}
+                      {form.description && <p className="text-sm text-slate-600 mt-1.5">{form.description}</p>}
                     </div>
-                    <div className="flex justify-end items-center gap-2 pt-2 border-t mt-2">
-                      <button onClick={() => { setEditingFormId(form.id); setEditTitle(form.title); setEditDesc(form.description || ''); }} className="text-xs font-bold text-slate-700 hover:text-indigo-600 flex items-center gap-1 bg-white px-2 py-1 rounded border">
-                        <Edit2 className="h-3 w-3" /> Rename
+                    <div className="flex justify-end items-center gap-2 pt-3 border-t mt-3">
+                      <button onClick={() => { setEditingFormId(form.id); setEditTitle(form.title); setEditDesc(form.description || ''); }} className="text-sm font-bold text-slate-700 hover:text-indigo-600 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                        <Edit2 className="h-4 w-4" /> Rename
                       </button>
-                      <button onClick={() => onDeleteForm(form.id)} className="text-xs font-bold text-red-600 hover:text-red-800 flex items-center gap-1 bg-red-50 px-2 py-1 rounded border border-red-200">
-                        <Trash2 className="h-3 w-3" /> Delete
+                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:text-red-800 flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
+                        <Trash2 className="h-4 w-4" /> Delete
                       </button>
                     </div>
                   </>
@@ -1352,26 +1439,26 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-          <h3 className="text-base font-bold text-slate-900 border-b pb-2">Create New Custom Form</h3>
+          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Form Name</label>
-              <input type="text" placeholder="e.g. Beneficiary Monitoring Survey" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white font-semibold" />
+              <label className="block text-sm font-bold text-slate-700 mb-1">Form Name</label>
+              <input type="text" placeholder="e.g. Beneficiary Monitoring Survey" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base bg-white font-bold" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Instructions / Description</label>
-              <textarea placeholder="Guidelines for enumerators..." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm h-20" />
+              <label className="block text-sm font-bold text-slate-700 mb-1">Instructions / Description</label>
+              <textarea placeholder="Guidelines for enumerators..." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="w-full border rounded-xl p-3 text-base h-24" />
             </div>
           </div>
 
           <hr className="border-slate-200" />
 
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-800">Form Questions ({fields.length})</h3>
+            <h3 className="text-base font-extrabold text-slate-900">Form Questions ({fields.length})</h3>
             {fields.map((field, idx) => (
-              <div key={field.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div key={field.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500 font-mono">Question {idx + 1}</span>
+                  <span className="text-sm font-extrabold text-slate-500 font-mono">Question {idx + 1}</span>
                   <input 
                     type="text" 
                     value={field.label} 
@@ -1380,15 +1467,15 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                       updated[idx].label = e.target.value;
                       setFields(updated);
                     }} 
-                    className="flex-1 bg-white border rounded-lg px-3 py-1.5 text-sm font-semibold shadow-sm" 
+                    className="flex-1 bg-white border rounded-xl px-4 py-2 text-base font-bold shadow-sm" 
                   />
-                  <span className="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-1 rounded uppercase">{field.type}</span>
-                  <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-1.5 rounded border border-red-200">Remove</button>
+                  <span className="text-xs bg-indigo-100 text-indigo-900 font-extrabold px-3 py-1 rounded-lg uppercase">{field.type}</span>
+                  <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">Remove</button>
                 </div>
 
                 {field.type === 'select' && (
-                  <div className="pl-6 text-xs space-y-1">
-                    <label className="font-bold text-slate-600">Dropdown Options (comma separated):</label>
+                  <div className="pl-6 text-sm space-y-1.5">
+                    <label className="font-bold text-slate-700">Dropdown Options (comma separated):</label>
                     <input 
                       type="text" 
                       value={field.options.join(', ')} 
@@ -1397,7 +1484,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                         updated[idx].options = e.target.value.split(',').map(s => s.trim());
                         setFields(updated);
                       }}
-                      className="w-full border rounded p-1 bg-white"
+                      className="w-full border rounded-xl p-2.5 bg-white text-sm"
                     />
                   </div>
                 )}
@@ -1405,14 +1492,14 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
             ))}
           </div>
 
-          <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition">
+          <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-md transition text-base">
             Publish Form To Project
           </button>
         </div>
 
         <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4 h-fit">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Add Question Type</h3>
-          <div className="grid grid-cols-1 gap-2">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300">Add Question Type</h3>
+          <div className="grid grid-cols-1 gap-2.5">
             {[
               { type: 'text', label: 'Short Text', icon: FileText },
               { type: 'number', label: 'Numeric Quantity', icon: DollarSign },
@@ -1428,9 +1515,9 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                 <button
                   key={tool.type}
                   onClick={() => addField(tool.type)}
-                  className="flex items-center space-x-2.5 bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl border border-slate-700 text-xs font-semibold transition text-left"
+                  className="flex items-center space-x-3 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 text-sm font-bold transition text-left"
                 >
-                  <Icon className="h-4 w-4 text-indigo-400" />
+                  <Icon className="h-5 w-5 text-indigo-400" />
                   <span>{tool.label}</span>
                 </button>
               );
@@ -1471,18 +1558,18 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 text-base">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-900">Field Data Entry Submission</h2>
-          <p className="text-sm text-slate-500">Record field survey responses synced directly to Firebase.</p>
+          <h2 className="text-2xl font-black text-slate-900">Field Data Entry Submission</h2>
+          <p className="text-base text-slate-600 mt-1">Record field survey responses synced directly to Firebase.</p>
 
           <div className="mt-4">
-            <label className="block text-xs font-bold text-slate-700 mb-1">Select Form</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Select Form</label>
             <select 
               value={selectedFormId} 
               onChange={(e) => { setSelectedFormId(e.target.value); setFormData({}); }}
-              className="w-full border rounded-lg p-2.5 text-sm font-bold bg-white"
+              className="w-full border rounded-xl p-3 text-base font-bold bg-white"
             >
               {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
             </select>
@@ -1490,12 +1577,12 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         </div>
 
         {activeForm ? (
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-            <h3 className="font-bold text-slate-900 text-lg border-b pb-2">{activeForm.title}</h3>
+          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+            <h3 className="font-extrabold text-slate-900 text-xl border-b pb-3">{activeForm.title}</h3>
             {activeForm.fields.map(field => {
               return (
-                <div key={field.id} className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
+                <div key={field.id} className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-800">
                     {field.label} {field.required && <span className="text-red-500">*</span>}
                   </label>
 
@@ -1505,34 +1592,34 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                       required={field.required}
                       value={formData[field.id] || ''}
                       onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-lg p-2.5 text-sm bg-white shadow-sm"
+                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
                     />
                   ) : field.type === 'select' ? (
                     <select
                       required={field.required}
                       value={formData[field.id] || ''}
                       onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-lg p-2.5 text-sm bg-white shadow-sm"
+                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
                     >
                       <option value="">-- Select Option --</option>
                       {(field.options || []).map(opt => (<option key={opt} value={opt}>{opt}</option>))}
                     </select>
                   ) : field.type === 'location' ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <input 
                         type="text" 
                         readOnly
                         required={field.required}
                         placeholder="Latitude, Longitude"
                         value={formData[field.id] || ''}
-                        className="flex-1 border rounded-lg p-2.5 text-sm bg-slate-50 font-mono"
+                        className="flex-1 border rounded-xl p-3 text-base bg-slate-50 font-mono"
                       />
                       <button 
                         type="button"
                         onClick={() => handleCaptureGPS(field.id)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-extrabold flex items-center gap-2 shadow"
                       >
-                        <MapPin className="h-4 w-4" /> Capture GPS
+                        <MapPin className="h-5 w-5" /> Capture GPS
                       </button>
                     </div>
                   ) : field.type === 'photo' ? (
@@ -1544,7 +1631,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                         const file = e.target.files[0];
                         if (file) setFormData({...formData, [field.id]: file.name});
                       }}
-                      className="w-full border rounded-lg p-2 text-sm bg-white"
+                      className="w-full border rounded-xl p-3 text-base bg-white"
                     />
                   ) : field.type === 'note' ? (
                     <textarea 
@@ -1552,22 +1639,22 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                       placeholder="Enter detailed observations..."
                       value={formData[field.id] || ''}
                       onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-lg p-2.5 text-sm h-24 bg-white"
+                      className="w-full border rounded-xl p-3 text-base h-28 bg-white"
                     />
                   ) : field.type === 'rating' ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {[1, 2, 3, 4, 5].map(star => (
                         <button
                           key={star}
                           type="button"
                           onClick={() => setFormData({...formData, [field.id]: String(star)})}
-                          className={`p-2 rounded-lg border text-sm font-bold flex items-center gap-1 transition ${
+                          className={`p-3 rounded-xl border text-base font-bold flex items-center gap-1.5 transition ${
                             Number(formData[field.id]) >= star 
                               ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm' 
-                              : 'bg-slate-50 text-slate-400 border-slate-200'
+                              : 'bg-slate-50 text-slate-500 border-slate-200'
                           }`}
                         >
-                          <Star className="h-4 w-4 fill-current" /> {star}
+                          <Star className="h-5 w-5 fill-current" /> {star}
                         </button>
                       ))}
                     </div>
@@ -1576,32 +1663,32 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
               );
             })}
 
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition mt-6">
+            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-2xl shadow-md transition mt-6 text-base">
               Submit Data Record to Cloud
             </button>
           </form>
         ) : (
-          <p className="text-center text-slate-500 font-medium">No active forms available.</p>
+          <p className="text-center text-slate-600 font-bold">No active forms available.</p>
         )}
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
         <div className="flex justify-between items-center border-b pb-3">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Database className="h-5 w-5 text-indigo-600" /> Submitted Field Data Logs ({project.submissions.length})
+          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+            <Database className="h-6 w-6 text-indigo-600" /> Submitted Field Data Logs ({project.submissions.length})
           </h3>
           {project.submissions.length > 0 && (
-            <button onClick={onClearAllSubmissions} className="text-xs text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-300 font-bold">
+            <button onClick={onClearAllSubmissions} className="text-sm text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl border border-red-300 font-extrabold">
               Clear All Submissions
             </button>
           )}
         </div>
         {project.submissions.length === 0 ? (
-          <p className="text-slate-500 text-sm italic">No entries recorded yet for this project.</p>
+          <p className="text-slate-500 text-base italic">No entries recorded yet for this project.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-100 text-slate-700 font-bold border-b">
+            <table className="w-full text-left text-base">
+              <thead className="bg-slate-100 text-slate-800 font-extrabold border-b">
                 <tr>
                   <th className="py-3 px-4">Ref</th>
                   <th className="py-3 px-4">Timestamp</th>
@@ -1612,20 +1699,20 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
               <tbody className="divide-y divide-slate-200">
                 {project.submissions.map(sub => (
                   <tr key={sub.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-mono text-xs text-indigo-700 font-bold">{sub.id}</td>
-                    <td className="py-3 px-4 text-slate-600 text-xs">{sub.timestamp}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1.5">
+                    <td className="py-4 px-4 font-mono text-sm text-indigo-700 font-bold">{sub.id}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm">{sub.timestamp}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex flex-wrap gap-2">
                         {Object.entries(sub.data).map(([k, v]) => (
-                          <span key={k} className="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md border font-medium">
+                          <span key={k} className="bg-slate-100 text-slate-900 text-sm px-3 py-1.5 rounded-xl border font-bold">
                             <strong>{k}:</strong> {v}
                           </span>
                         ))}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button onClick={() => onDeleteSubmission(sub.id)} className="text-red-600 hover:text-red-800 p-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200" title="Delete">
-                        <Trash2 className="h-4 w-4" />
+                    <td className="py-4 px-4 text-right">
+                      <button onClick={() => onDeleteSubmission(sub.id)} className="text-red-600 hover:text-red-800 p-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200" title="Delete">
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </td>
                   </tr>
@@ -1641,35 +1728,35 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
 
 function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">GMEL Data Export Suite</h2>
-        <p className="text-sm text-slate-500">Export field submissions, indicators, and backups.</p>
+        <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
+        <p className="text-base text-slate-600 mt-1">Export field submissions, indicators, and backups.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <div className="bg-emerald-50 p-3 rounded-xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-6 w-6 text-emerald-600" /></div>
-            <h3 className="font-bold text-slate-900">Raw Field Submissions</h3>
-            <p className="text-xs text-slate-600 mt-1">Download CSV containing GPS, photos, and ratings.</p>
+            <div className="bg-emerald-50 p-3.5 rounded-2xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-7 w-7 text-emerald-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Raw Field Submissions</h3>
+            <p className="text-sm text-slate-600 mt-1">Download CSV containing GPS, photos, and ratings.</p>
           </div>
-          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-md">Export CSV</button>
+          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export CSV</button>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <div className="bg-indigo-50 p-3 rounded-xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-6 w-6 text-indigo-600" /></div>
-            <h3 className="font-bold text-slate-900">Logframe Report</h3>
-            <p className="text-xs text-slate-600 mt-1">Export calculated indicator targets and progress.</p>
+            <div className="bg-indigo-50 p-3.5 rounded-2xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-7 w-7 text-indigo-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Logframe Report</h3>
+            <p className="text-sm text-slate-600 mt-1">Export calculated indicator targets and progress.</p>
           </div>
-          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-sm shadow-md">Export Logframe CSV</button>
+          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe CSV</button>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
-            <div className="bg-amber-50 p-3 rounded-xl w-fit mb-3 border border-amber-200"><FileCode className="h-6 w-6 text-amber-600" /></div>
-            <h3 className="font-bold text-slate-900">Full System Backup</h3>
-            <p className="text-xs text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
+            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileCode className="h-7 w-7 text-amber-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Full System Backup</h3>
+            <p className="text-sm text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
           </div>
-          <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md">Download JSON</button>
+          <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download JSON</button>
         </div>
       </div>
     </div>
@@ -1678,21 +1765,21 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
 
 function MobileSyncView({ project }) {
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900">Mobile App Sync &amp; API Hub</h2>
-        <p className="text-sm text-slate-500">Pair mobile devices for offline enumerations.</p>
+        <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; API Hub</h2>
+        <p className="text-base text-slate-600 mt-1">Pair mobile devices for offline enumerations.</p>
       </div>
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <div className="flex items-center space-x-3">
-          <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200"><Smartphone className="h-7 w-7 text-emerald-600" /></div>
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+        <div className="flex items-center space-x-4">
+          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200"><Smartphone className="h-8 w-8 text-emerald-600" /></div>
           <div>
-            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">Connected to Firebase Firestore</h3>
+            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
+            <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">Connected to Firebase Firestore</h3>
           </div>
         </div>
-        <p className="text-sm text-slate-600">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
-        <div className="p-3 bg-slate-50 rounded-xl border text-xs font-semibold text-slate-800">
+        <p className="text-base text-slate-700">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
+        <div className="p-4 bg-slate-50 rounded-2xl border text-sm font-bold text-slate-900">
           Current Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
         </div>
       </div>
@@ -1703,51 +1790,51 @@ function MobileSyncView({ project }) {
 function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
   const activeForm = project.forms.find(f => f.id === selectedFormId) || project.forms[0];
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Printable Paper Form Layout</h2>
-          <p className="text-sm text-slate-500">Generates clean paper-ready survey sheets.</p>
+          <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
+          <p className="text-base text-slate-600 mt-1">Generates clean paper-ready survey sheets.</p>
         </div>
         <div className="print-actions flex items-center gap-3">
-          <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-lg px-3 py-2 text-sm font-semibold bg-white">
+          <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-xl px-4 py-2.5 text-base font-bold bg-white">
             {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
           </select>
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
-            <Printer className="h-4 w-4" /> Print Form
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-5 w-5" /> Print Form
           </button>
         </div>
       </div>
       {activeForm ? (
-        <div className="bg-white p-10 rounded-2xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none print:p-0">
-          <div className="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-start">
+        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none print:p-0">
+          <div className="border-b-2 border-slate-900 pb-5 mb-6 flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 uppercase">{project.name}</h1>
-              <p className="text-sm font-semibold text-slate-600">Official Field Monitoring Survey Paper Form</p>
+              <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
+              <p className="text-base font-bold text-slate-600">Official Field Monitoring Survey Paper Form</p>
             </div>
-            <div className="text-right text-xs text-slate-500">
+            <div className="text-right text-sm text-slate-600">
               <p><strong>Code:</strong> {project.code}</p>
               <p><strong>Ref:</strong> {activeForm.id}</p>
             </div>
           </div>
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-800 border-b pb-1">{activeForm.title}</h2>
-            {activeForm.description && <p className="text-xs text-slate-500 mt-1 italic">{activeForm.description}</p>}
+            <h2 className="text-xl font-extrabold text-slate-900 border-b pb-1">{activeForm.title}</h2>
+            {activeForm.description && <p className="text-sm text-slate-600 mt-1 italic">{activeForm.description}</p>}
           </div>
           <div className="space-y-6">
             {activeForm.fields.map((field, idx) => (
               <div key={field.id} className="space-y-2">
-                <div className="flex justify-between text-sm font-semibold text-slate-800">
+                <div className="flex justify-between text-base font-bold text-slate-900">
                   <span>{idx + 1}. {field.label} {field.required && '*'}</span>
                   <span className="text-xs text-slate-500 font-normal">[{field.type.toUpperCase()}]</span>
                 </div>
-                <div className="h-10 border border-slate-400 rounded-md bg-white"></div>
+                <div className="h-12 border border-slate-400 rounded-xl bg-white"></div>
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <p className="text-center text-slate-500">No form available to print.</p>
+        <p className="text-center text-slate-600">No form available to print.</p>
       )}
     </div>
   );
