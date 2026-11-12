@@ -37,12 +37,12 @@ import {
 // FIREBASE CLOUD CONFIGURATION
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
-  authDomain: "online-shop-dcbea.firebaseapp.com",
-  projectId: "online-shop-dcbea",
-  storageBucket: "online-shop-dcbea.firebasestorage.app",
-  messagingSenderId: "113310368595",
-  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
+  projectId: "YOUR_FIREBASE_PROJECT_ID",
+  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "YOUR_FIREBASE_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -965,7 +965,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   );
 }
 
-// LICENSE & ACTIVATION COMPONENT (SECURED AGAINST DEMO REUSE)
+// LICENSE & ACTIVATION COMPONENT (HIDDEN PAID CODES & SECURED DEMO)
 function LicenseActivationView({ license, setLicense }) {
   const [inputCode, setInputCode] = useState('');
 
@@ -1003,7 +1003,7 @@ function LicenseActivationView({ license, setLicense }) {
         expiresAt: null
       };
     } else {
-      alert('Invalid activation code. Try: DEMO-5DAYS, ANNUAL-2026, or LIFETIME-GMEL');
+      alert('Invalid activation code. Please enter a valid code or contact support after payment.');
       return;
     }
 
@@ -1029,21 +1029,21 @@ function LicenseActivationView({ license, setLicense }) {
           <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
           <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
           <p className="text-xs text-slate-600 mt-2">Trial code for testing features.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: DEMO-5DAYS</div>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-indigo-700">Code: DEMO-5DAYS (free)</div>
         </div>
 
-        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'ANNUAL-2026' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200">
           <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
           <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
           <p className="text-xs text-slate-600 mt-2">Full access for 365 days.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: ANNUAL-2026</div>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-400 italic">🔒 Issued after payment confirmation</div>
         </div>
 
-        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'LIFETIME-GMEL' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200">
           <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
           <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
           <p className="text-xs text-slate-600 mt-2">Permanent license, never expires.</p>
-          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: LIFETIME-GMEL</div>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-400 italic">🔒 Issued after payment confirmation</div>
         </div>
       </div>
 
@@ -1078,7 +1078,7 @@ function LicenseActivationView({ license, setLicense }) {
             <input 
               type="text" 
               required
-              placeholder="e.g. DEMO-5DAYS, ANNUAL-2026, LIFETIME-GMEL"
+              placeholder="Enter your activation key..."
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
               className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm"
