@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { Geolocation } from '@capacitor/geolocation';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
   BarChart3, 
   PlusCircle, 
@@ -32,6 +34,26 @@ import {
   BellRing,
   Mail
 } from 'lucide-react';
+
+// ==========================================
+// FIREBASE CLOUD CONFIGURATION
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
+  authDomain: "online-shop-dcbea.firebaseapp.com",
+  projectId: "online-shop-dcbea",
+  storageBucket: "online-shop-dcbea.firebasestorage.app",
+  messagingSenderId: "113310368595",
+  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
+};
+
+let db = null;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase init note:", e);
+}
 
 const createId = (prefix) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
@@ -79,38 +101,54 @@ export default function App() {
     activatedAt: null,
     expiresAt: null
   });
-  const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
+  const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
-  // 1. Load saved data & license from localStorage on app load
+  // 1. Fetch live data & license from Firebase Firestore on app load
   useEffect(() => {
-    try {
-      const savedData = localStorage.getItem('gmel_system_data');
-      if (savedData) {
-        const parsed = JSON.parse(savedData);
-        if (parsed.projects) setProjects(parsed.projects);
-        if (parsed.license && parsed.license.code) setLicense(parsed.license);
+    async function fetchCloudData() {
+      try {
+        if (!db) {
+          setIsLoadedFromCloud(true);
+          return;
+        }
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.projects) setProjects(data.projects);
+          if (data.license && data.license.code) {
+            setLicense(data.license);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading from Firebase, using defaults:', err);
+      } finally {
+        setIsLoadedFromCloud(true);
       }
-    } catch (err) {
-      console.error('Error loading local data:', err);
-    } finally {
-      setIsLoadedFromStorage(true);
     }
+    fetchCloudData();
   }, []);
 
-  // 2. Save data & license changes to localStorage automatically
+  // 2. Sync state changes & license to Firebase Firestore automatically
   useEffect(() => {
-    if (!isLoadedFromStorage) return;
-    try {
-      localStorage.setItem('gmel_system_data', JSON.stringify({ projects, license, updated_at: new Date() }));
-    } catch (err) {
-      console.error('Error saving local data:', err);
+    if (!isLoadedFromCloud || !db) return;
+
+    async function saveCloudData() {
+      try {
+        const docRef = doc(db, 'gmel_systems', 'main_workspace');
+        await setDoc(docRef, { projects, license, updated_at: new Date() });
+      } catch (err) {
+        console.error('Error saving to Firebase:', err);
+      }
     }
-  }, [projects, license, isLoadedFromStorage]);
+    saveCloudData();
+  }, [projects, license, isLoadedFromCloud]);
 
   useEffect(() => {
     const handleInstallAvailable = (event) => {
@@ -150,12 +188,13 @@ export default function App() {
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
   const hasValidLicense = Boolean(license.code && !isExpired);
 
-  if (!isLoadedFromStorage) {
+  // If data is still loading from cloud, show loading screen
+  if (!isLoadedFromCloud) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-sm text-slate-400">Loading GMEL System Workspace...</p>
+          <p className="text-sm text-slate-400">Loading GMEL System Workspace from Cloud...</p>
         </div>
       </div>
     );
@@ -226,7 +265,16 @@ export default function App() {
             )}
 
             <button 
-              onClick={openEditProject}
+              onClick={() => {
+                setEditProj({
+                  name: currentProject.name,
+                  code: currentProject.code,
+                  donor: currentProject.donor,
+                  budget: currentProject.budget,
+                  location: currentProject.location
+                });
+                setShowEditProjectModal(true);
+              }}
               title="Rename or Delete Current Project"
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2 rounded-lg font-bold text-xs flex items-center gap-1 transition"
             >
@@ -279,12 +327,77 @@ export default function App() {
 
       {/* Main View Area */}
       <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
-        {activeTab === 'dashboard' && <DashboardView project={currentProject} getCalculatedActual={getCalculatedActual} onOpenEditProject={openEditProject} />}
+        {activeTab === 'dashboard' && (
+          <DashboardView 
+            project={currentProject} 
+            getCalculatedActual={getCalculatedActual} 
+            onOpenEditProject={() => {
+              setEditProj({
+                name: currentProject.name,
+                code: currentProject.code,
+                donor: currentProject.donor,
+                budget: currentProject.budget,
+                location: currentProject.location
+              });
+              setShowEditProjectModal(true);
+            }} 
+          />
+        )}
         {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
         {activeTab === 'reports' && <CustomReportsView project={currentProject} getCalculatedActual={getCalculatedActual} />}
-        {activeTab === 'builder' && <FormBuilderView project={currentProject} setProjects={setProjects} onRenameForm={handleRenameForm} onDeleteForm={handleDeleteForm} />}
-        {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
-        {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
+        {activeTab === 'builder' && (
+          <FormBuilderView 
+            project={currentProject} 
+            setProjects={setProjects} 
+            onRenameForm={(formId, title, desc) => {
+              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
+                ...p,
+                forms: p.forms.map(f => f.id === formId ? { ...f, title, description: desc } : f)
+              }));
+            }} 
+            onDeleteForm={(formId) => {
+              if (!window.confirm('Delete this form?')) return;
+              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
+                ...p,
+                forms: p.forms.filter(f => f.id !== formId)
+              }));
+            }} 
+          />
+        )}
+        {activeTab === 'entry' && (
+          <DataEntryView 
+            project={currentProject} 
+            onSubmitForm={(formId, data) => {
+              const submissionObj = { id: createId('sub'), formId, timestamp: new Date().toLocaleString(), data };
+              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
+                ...p,
+                submissions: [submissionObj, ...p.submissions]
+              }));
+              alert('Data record submitted and synced to Firebase successfully!');
+            }} 
+            onDeleteSubmission={(subId) => {
+              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
+                ...p,
+                submissions: p.submissions.filter(s => s.id !== subId)
+              }));
+            }} 
+            onClearAllSubmissions={() => {
+              if (!window.confirm('Clear all submissions?')) return;
+              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : { ...p, submissions: [] }));
+            }} 
+          />
+        )}
+        {activeTab === 'export' && (
+          <ExportSuiteView 
+            onExportSubmissions={() => exportCSV(currentProject.submissions, `${currentProject.code}_submissions.csv`)}
+            onExportLogframe={() => exportCSV(currentProject.indicators, `${currentProject.code}_logframe.csv`)}
+            onExportBackup={() => {
+              const blob = new Blob([JSON.stringify({ projects, license }, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'gmel_system_backup.json'; a.click();
+            }} 
+          />
+        )}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
         {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
@@ -363,7 +476,21 @@ export default function App() {
               </h3>
               <button onClick={() => setShowAddProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
             </div>
-            <form onSubmit={handleCreateProject} className="space-y-3">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!newProj.name.trim() || !newProj.code.trim()) return;
+              const projectObj = {
+                ...newProj,
+                id: createId('proj'),
+                indicators: [],
+                forms: [],
+                submissions: []
+              };
+              setProjects(prev => [...prev, projectObj]);
+              setActiveProjectId(projectObj.id);
+              setShowAddProjectModal(false);
+              setNewProj({ name: '', code: '', donor: '', budget: '', location: '' });
+            }} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Project Name *</label>
                 <input type="text" required placeholder="e.g. Sustainable Water Support" value={newProj.name} onChange={(e) => setNewProj({...newProj, name: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
@@ -405,7 +532,11 @@ export default function App() {
               </h3>
               <button onClick={() => setShowEditProjectModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
             </div>
-            <form onSubmit={handleUpdateProject} className="space-y-3">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              setProjects(prev => prev.map(p => p.id === currentProject.id ? { ...p, ...editProj } : p));
+              setShowEditProjectModal(false);
+            }} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Project Name</label>
                 <input type="text" required value={editProj.name} onChange={(e) => setEditProj({...editProj, name: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-semibold" />
@@ -429,7 +560,21 @@ export default function App() {
                 <input type="text" value={editProj.location} onChange={(e) => setEditProj({...editProj, location: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
               </div>
               <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-                <button type="button" onClick={handleDeleteProject} className="px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 flex items-center gap-1">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (projects.length <= 1) {
+                      alert('You must keep at least one project.');
+                      return;
+                    }
+                    if (!window.confirm(`Delete project "${currentProject.name}"?`)) return;
+                    const remaining = projects.filter(p => p.id !== currentProject.id);
+                    setProjects(remaining);
+                    setActiveProjectId(remaining[0].id);
+                    setShowEditProjectModal(false);
+                  }} 
+                  className="px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 flex items-center gap-1"
+                >
                   <Trash2 className="h-3.5 w-3.5" /> Delete Project
                 </button>
                 <div className="flex gap-2">
@@ -443,6 +588,37 @@ export default function App() {
       )}
     </div>
   );
+}
+
+// HELPER CALCULATOR FUNCTION
+function getCalculatedActual(project, ind) {
+  if (!ind.mappedFieldId) return ind.baseline || 0;
+  const values = project.submissions.map(sub => Number(sub.data[ind.mappedFieldId])).filter(v => !isNaN(v));
+  if (values.length === 0) return ind.baseline || 0;
+
+  if (ind.calcType === 'AVG') return (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+  if (ind.calcType === 'COUNT') return values.length;
+  if (ind.calcType === 'MAX') return Math.max(...values);
+  if (ind.calcType === 'PERCENTAGE') return ((values.filter(v => v > 0).length / values.length) * 100).toFixed(0);
+  return values.reduce((a, b) => a + b, 0); // Default SUM
+}
+
+function exportCSV(dataArray, filename) {
+  if (!dataArray || dataArray.length === 0) {
+    alert('No data available to export.');
+    return;
+  }
+  const csvContent = "data:text/csv;charset=utf-8," + [
+    Object.keys(dataArray[0]).join(","),
+    ...dataArray.map(item => Object.values(item).map(v => typeof v === 'object' ? JSON.stringify(v) : `"${v}"`).join(","))
+  ].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // DASHBOARD COMPONENT
@@ -465,25 +641,23 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
 
   return (
     <div className="space-y-6">
-      <div className="dashboard-heading">
+      <div className="dashboard-heading flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
-          <div className="eyebrow">MONITORING &amp; EVALUATION WORKSPACE</div>
-          <h2>{project.name}</h2>
-          <p><MapPin className="h-4 w-4" /> {project.location} <span className="heading-separator">·</span> Reporting period: 2026</p>
+          <div className="text-xs font-bold text-indigo-600 uppercase">MONITORING &amp; EVALUATION WORKSPACE</div>
+          <h2 className="text-xl font-black text-slate-900 mt-0.5">{project.name}</h2>
+          <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><MapPin className="h-4 w-4" /> {project.location} · Reporting period: 2026</p>
         </div>
-        <button onClick={onOpenEditProject} className="dashboard-edit-button">
+        <button onClick={onOpenEditProject} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-1.5 transition">
           <Edit2 className="h-4 w-4" /> Edit project
         </button>
       </div>
-      <div className="dashboard-stats grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase">Project Code</p>
             <h3 className="text-xl font-extrabold text-slate-900 font-mono mt-0.5">{project.code}</h3>
           </div>
-          <button onClick={onOpenEditProject} title="Edit Project">
-            <Building2 className="h-9 w-9 text-indigo-600 bg-indigo-50 p-2 rounded-xl border border-indigo-100 hover:bg-indigo-100" />
-          </button>
+          <Building2 className="h-9 w-9 text-indigo-600 bg-indigo-50 p-2 rounded-xl border border-indigo-100" />
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
@@ -544,10 +718,10 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
               <PieChart className="h-5 w-5 text-indigo-600" /> Indicator Level Breakdown
             </h3>
             <div className="py-6 flex justify-center">
-              <div className="gmel-donut" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
-                <div className="gmel-donut-center">
-                  <strong>{totalIndicators}</strong>
-                  <span>indicators</span>
+              <div className="w-32 h-32 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
+                <div className="absolute w-20 h-20 bg-white rounded-full flex flex-col items-center justify-center shadow">
+                  <strong className="text-base font-extrabold text-slate-900">{totalIndicators}</strong>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">indicators</span>
                 </div>
               </div>
             </div>
@@ -556,7 +730,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
                 const count = project.indicators.filter(i => i.level === lvl).length;
                 return (
                   <div key={lvl} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800 flex items-center gap-2"><span className="level-dot" style={{ backgroundColor: color }} />{lvl} level</span>
+                    <span className="font-semibold text-slate-800 flex items-center gap-2"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: color }} />{lvl} level</span>
                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">{count}</span>
                   </div>
                 );
@@ -749,7 +923,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
   );
 }
 
-// LICENSE & ACTIVATION COMPONENT WITH ONE-CLICK BUTTONS & EMAIL REQUESTS
+// LICENSE & ACTIVATION COMPONENT
 function LicenseActivationView({ license, setLicense, isGateway = false }) {
   const [inputCode, setInputCode] = useState('');
 
@@ -803,44 +977,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
   const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : null;
 
-  // Determine Alert Banner Tier based on days remaining
-  let alertBanner = null;
-  if (license.expiresAt) {
-    if (isExpired) {
-      alertBanner = {
-        bg: 'bg-red-50 border-red-300 text-red-900',
-        icon: AlertTriangle,
-        iconColor: 'text-red-600',
-        title: 'License Expired',
-        message: 'Your system license has expired. Please enter a valid renewal code to restore full functionality.'
-      };
-    } else if (daysRemaining <= 2) {
-      alertBanner = {
-        bg: 'bg-red-50 border-red-300 text-red-900',
-        icon: BellRing,
-        iconColor: 'text-red-600',
-        title: '🚨 Urgent Alert (Level 1: 2 Days or Less Remaining)',
-        message: `Your license expires in ${daysRemaining} day(s). Renew immediately to avoid system lockout.`
-      };
-    } else if (daysRemaining <= 10) {
-      alertBanner = {
-        bg: 'bg-amber-50 border-amber-300 text-amber-900',
-        icon: AlertTriangle,
-        iconColor: 'text-amber-600',
-        title: '⚠️ Expiration Warning (Level 2: 10 Days Remaining)',
-        message: `Your license will expire in ${daysRemaining} days. Please arrange your renewal payment.`
-      };
-    } else if (daysRemaining <= 30) {
-      alertBanner = {
-        bg: 'bg-blue-50 border-blue-300 text-blue-900',
-        icon: BellRing,
-        iconColor: 'text-blue-600',
-        title: 'ℹ️ Renewal Notice (Level 2: 1 Month Remaining)',
-        message: `Your license is scheduled to expire in ${daysRemaining} days (1 month notice).`
-      };
-    }
-  }
-
   return (
     <div className={`mx-auto space-y-6 ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
       {!isGateway && (
@@ -852,19 +988,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         </div>
       )}
 
-      {/* Tiered Expiration Alert Banner */}
-      {alertBanner && (
-        <div className={`p-4 rounded-2xl border flex items-start gap-3 shadow-sm ${alertBanner.bg}`}>
-          <alertBanner.icon className={`h-6 w-6 shrink-0 mt-0.5 ${alertBanner.iconColor}`} />
-          <div>
-            <h4 className="font-bold text-sm">{alertBanner.title}</h4>
-            <p className="text-xs mt-0.5">{alertBanner.message}</p>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Level 1: One-Click Demo Activation */}
         <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200 text-slate-900'}`}>
           <div>
             <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
@@ -881,7 +1005,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
         </div>
 
-        {/* Level 2: Email Request for Payment */}
         <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
@@ -890,7 +1013,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan&body=Hello,%20I%20would%20like%20to%20request%20activation%20for%20the%20One-Year%20Plan%20after%20payment.%20Workspace%20Details:"
+              href="mailto:support@enrichdata.or.tz?subject=Request%20Annual%20License%20Key"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
@@ -898,7 +1021,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
         </div>
 
-        {/* Level 3: Email Request for Payment */}
         <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
@@ -907,7 +1029,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           </div>
           <div className="mt-4 pt-3 border-t">
             <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License&body=Hello,%20I%20would%20like%20to%20request%20activation%20for%20the%20Lifetime%20License%20after%20payment.%20Workspace%20Details:"
+              href="mailto:support@enrichdata.or.tz?subject=Request%20Lifetime%20License%20Key"
               className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5 text-center"
             >
               <Mail className="h-4 w-4" /> Request via Email
@@ -927,21 +1049,6 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
               {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
               {isExpired ? 'Expired' : 'Active'}
             </span>
-          </div>
-        )}
-
-        {!isGateway && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div className="bg-slate-50 p-4 rounded-xl border">
-              <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
-              <p className="font-bold text-slate-900 mt-1">{license.level}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-xl border">
-              <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
-              <p className="font-bold text-indigo-600 mt-1">
-                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
-              </p>
-            </div>
           </div>
         )}
 
@@ -1034,25 +1141,12 @@ function CustomReportsView({ project, getCalculatedActual }) {
             </table>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-          <div className="p-4 bg-slate-50 rounded-xl border">
-            <h4 className="font-bold text-slate-900 text-sm mb-1">Total Submissions Recorded</h4>
-            <p className="text-2xl font-extrabold text-indigo-600 font-mono">{project.submissions.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Field monitoring surveys logged across project sites.</p>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-xl border">
-            <h4 className="font-bold text-slate-900 text-sm mb-1">Active Survey Forms</h4>
-            <p className="text-2xl font-extrabold text-emerald-600 font-mono">{project.forms.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Configured data collection instruments with GPS and skip logic.</p>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-// FORM BUILDER COMPONENT WITH ADVANCED TYPES & SKIP LOGIC
+// FORM BUILDER COMPONENT
 function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
@@ -1078,10 +1172,6 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
       alert('Please enter a title for the form.');
       return;
     }
-    if (fields.some(field => field.skipLogic && (!field.skipLogic.fieldId || !String(field.skipLogic.value ?? '').trim()))) {
-      alert('Complete the question and answer for each Skip logic rule.');
-      return;
-    }
     const formId = createId('form');
     const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
     const newForm = {
@@ -1098,7 +1188,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
     setFormTitle('');
     setFormDesc('');
     setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-    alert('Custom form published successfully!');
+    alert('Custom form published and saved to Firebase!');
   };
 
   return (
@@ -1184,80 +1274,6 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
                   <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-1.5 rounded border border-red-200">Remove</button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-slate-200 pt-3">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={field.required}
-                      onChange={(e) => setFields(fields.map(item => item.id === field.id ? { ...item, required: e.target.checked } : item))}
-                    />
-                    Required question
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(field.skipLogic)}
-                      disabled={idx === 0}
-                      onChange={(e) => setFields(fields.map(item => item.id === field.id
-                        ? { ...item, skipLogic: e.target.checked ? { fieldId: fields[idx - 1].id, value: '' } : null }
-                        : item))}
-                    />
-                    Skip logic
-                  </label>
-                </div>
-
-                {field.skipLogic && idx > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
-                    <div className="space-y-1">
-                      <label htmlFor={`skip-question-${field.id}`} className="block text-xs font-bold text-slate-700">Show this question when</label>
-                      <select
-                        id={`skip-question-${field.id}`}
-                        value={field.skipLogic.fieldId}
-                        onChange={(e) => setFields(fields.map(item => item.id === field.id
-                          ? { ...item, skipLogic: { fieldId: e.target.value, value: '' } }
-                          : item))}
-                        className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                      >
-                        {fields.slice(0, idx).map(previousField => (
-                          <option key={previousField.id} value={previousField.id}>{previousField.label || `Question ${fields.indexOf(previousField) + 1}`}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor={`skip-value-${field.id}`} className="block text-xs font-bold text-slate-700">Answer is</label>
-                      {fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.type === 'select'
-                        && fields.find(previousField => previousField.id === field.skipLogic.fieldId)?.options?.length > 0 ? (
-                          <select
-                            id={`skip-value-${field.id}`}
-                            value={field.skipLogic.value}
-                            onChange={(e) => setFields(fields.map(item => item.id === field.id
-                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
-                              : item))}
-                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                          >
-                            <option value="">Choose an answer</option>
-                            {fields.find(previousField => previousField.id === field.skipLogic.fieldId).options.map(option => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            id={`skip-value-${field.id}`}
-                            type="text"
-                            value={field.skipLogic.value}
-                            onChange={(e) => setFields(fields.map(item => item.id === field.id
-                              ? { ...item, skipLogic: { ...item.skipLogic, value: e.target.value } }
-                              : item))}
-                            placeholder="Enter the answer that reveals this question"
-                            className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white"
-                          />
-                        )}
-                    </div>
-                    <p className="sm:col-span-2 text-[11px] text-slate-500">Respondents will only see this question when the earlier answer matches.</p>
-                  </div>
-                )}
-
-                {/* Additional config for Select options */}
                 {field.type === 'select' && (
                   <div className="pl-6 text-xs space-y-1">
                     <label className="font-bold text-slate-600">Dropdown Options (comma separated):</label>
@@ -1314,7 +1330,7 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   );
 }
 
-// DATA ENTRY & SUBMISSIONS LOG VIEW COMPONENT
+// DATA ENTRY COMPONENT
 function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
   const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
   const [formData, setFormData] = useState({});
@@ -1332,29 +1348,23 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
       alert(`GPS captured successfully: ${coords}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      alert(`Unable to retrieve your location. Check location permissions and try again. ${message}`);
+      alert(`Unable to retrieve location. ${message}`);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!activeForm) return;
-    const visibleResponses = Object.fromEntries(
-      activeForm.fields
-        .filter(field => isFieldVisible(field, formData))
-        .map(field => [field.id, formData[field.id] || ''])
-    );
-    onSubmitForm(activeForm.id, visibleResponses);
+    onSubmitForm(activeForm.id, formData);
     setFormData({});
   };
 
   return (
     <div className="space-y-8">
-      {/* Form Submission Entry */}
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h2 className="text-xl font-bold text-slate-900">Field Data Entry Submission</h2>
-          <p className="text-sm text-slate-500">Record field survey responses with advanced inputs.</p>
+          <p className="text-sm text-slate-500">Record field survey responses synced directly to Firebase.</p>
 
           <div className="mt-4">
             <label className="block text-xs font-bold text-slate-700 mb-1">Select Form</label>
@@ -1371,14 +1381,13 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         {activeForm ? (
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
             <h3 className="font-bold text-slate-900 text-lg border-b pb-2">{activeForm.title}</h3>
-            {activeForm.fields.filter(field => isFieldVisible(field, formData)).map(field => {
+            {activeForm.fields.map(field => {
               return (
                 <div key={field.id} className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
                     {field.label} {field.required && <span className="text-red-500">*</span>}
                   </label>
 
-                  {/* Render based on Question Type */}
                   {field.type === 'number' || field.type === 'text' || field.type === 'date' ? (
                     <input 
                       type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
@@ -1424,7 +1433,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
                         const file = e.target.files[0];
                         if (file) setFormData({...formData, [field.id]: file.name});
                       }}
-                      className="w-full border rounded-lg p-2 text-sm bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      className="w-full border rounded-lg p-2 text-sm bg-white"
                     />
                   ) : field.type === 'note' ? (
                     <textarea 
@@ -1457,7 +1466,7 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
             })}
 
             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition mt-6">
-              Submit Data Record
+              Submit Data Record to Cloud
             </button>
           </form>
         ) : (
@@ -1465,7 +1474,6 @@ function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSu
         )}
       </div>
 
-      {/* Submissions Feed */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
         <div className="flex justify-between items-center border-b pb-3">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1566,17 +1574,17 @@ function MobileSyncView({ project }) {
         <h2 className="text-xl font-bold text-slate-900">Mobile App Sync &amp; API Hub</h2>
         <p className="text-sm text-slate-500">Pair mobile devices for offline enumerations.</p>
       </div>
-      <div className="mobile-setup-card">
-        <div className="mobile-setup-icon"><Smartphone className="h-7 w-7" /></div>
-        <div>
-          <span className="setup-status">LOCAL STORAGE &amp; SYNC ACTIVE</span>
-          <h3>Ready for Field Data Operations</h3>
-          <p>Your M&amp;E system securely saves all projects, indicators, and surveys directly to browser storage for lightning-fast offline support.</p>
-          <div className="setup-project"><span>Current project</span><strong>{project.name} · {project.code}</strong></div>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        <div className="flex items-center space-x-3">
+          <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200"><Smartphone className="h-7 w-7 text-emerald-600" /></div>
+          <div>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">Connected to Firebase Firestore</h3>
+          </div>
         </div>
-        <div className="setup-note">
-          <strong>Multi-Device Workspace</strong>
-          <span>Data persists across all browsers and devices instantly.</span>
+        <p className="text-sm text-slate-600">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
+        <div className="p-3 bg-slate-50 rounded-xl border text-xs font-semibold text-slate-800">
+          Current Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
         </div>
       </div>
     </div>
