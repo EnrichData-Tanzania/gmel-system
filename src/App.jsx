@@ -788,13 +788,32 @@ function GISMapView({ project }) {
 }
 
 function UserGuidelinesView() {
-  const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.`;
-    const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
+  const downloadPDFGuidelines = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: OFFICIAL MANUAL
+Founder & Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania
+Qualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation
+Experience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.
+
+1. ROLE-BASED ACCESS CONTROL (RBAC) & SECURITY
+- Administrator Role: Full access to create projects, configure indicators, build custom forms, manage secure licenses, and record financial expenditures.
+- M&E Officer Role: Access to track logframes, view GIS maps, review performance scorecards, and analyze field survey data.
+- Enumerator Role: Restricted exclusively to field data collection and submission.
+- Security PIN Protection: Switching to Admin or M&E roles requires a verified security PIN (GMEL2026!), preventing unauthorized role escalation on shared devices.
+- Firebase Backend Security: Firestore security rules ensure cloud write/delete permissions are strictly restricted to authenticated administrators.
+
+2. CORE MODULES & NAVIGATION
+- Dashboard & Visuals: Instant summary cards showing Project Code, Donor Funding, Active Indicators, Total Submissions, overall project health score, and real financial budget utilization with expense tracking.
+- Logical Framework (Logframe) Matrix: Manage hierarchical project indicators (Impact, Outcome, Output, Activity) with fully disaggregated demographic metrics (General, Male, Female, Total) and automated form data mapping.
+- Geospatial GIS Map Intelligence: Interactive Leaflet Map plotting exact GPS coordinates (Latitude, Longitude) captured across field survey submissions.
+- Advanced Form Generator & Skip Logic: Build custom surveys supporting text, numbers, dates, dropdowns, multi-select checkboxes, GPS capture, photo uploads, notes, star ratings, and conditional skip logic.
+- Field Data Entry & Offline-First Caching: Designed for remote field environments across Tanzania with offline-first caching that automatically syncs with Firebase Firestore once online.
+- Export Suite & Printable Forms: Export raw submission logs and logframe indicators to CSV, generate automated PDF reports, and print clean paper survey layouts.`;
+
+  const handleDownload = () => {
+    const blob = new Blob([downloadPDFGuidelines], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'Gabriel_MEL_System_Guidelines.txt';
+    a.download = 'Gabriel_GMEL_System_Manual.txt';
     a.click();
   };
 
@@ -805,22 +824,22 @@ function UserGuidelinesView() {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Official manual for the GMEL System.</p>
+          <p className="text-base text-slate-600 mt-1">Official operational manual for the Gabriel Monitoring, Evaluation and Learning System.</p>
         </div>
         <div className="flex gap-2.5">
           <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
             <Printer className="h-5 w-5" /> Print Guide
           </button>
-          <button onClick={downloadPDFGuidelines} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
+          <button onClick={handleDownload} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
             <Download className="h-5 w-5" /> Download Guide
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6 text-slate-800 text-base leading-relaxed">
-        <div className="border-b pb-4">
-          <h1 className="text-3xl font-black text-slate-900">GMEL System Manual</h1>
-          <p className="text-indigo-600 text-sm font-bold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 text-slate-800 text-base leading-relaxed">
+        <div className="border-b pb-6">
+          <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
+          <p className="text-indigo-600 text-sm font-extrabold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania</p>
         </div>
 
         <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
@@ -831,11 +850,43 @@ function UserGuidelinesView() {
             In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <a href="url?id=5" className="text-indigo-600 underline font-bold">GMEL System</a>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
         </div>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
+            <p className="text-slate-700">The platform enforces strict security across three user tiers protected by a verified security PIN (`GMEL2026!`):</p>
+            <ul className="list-disc pl-6 space-y-1 text-slate-700 font-bold">
+              <li>Administrator: Full project creation, indicator configuration, form building, and financial expense tracking.</li>
+              <li>M&amp;E Officer: Logframe monitoring, GIS map analysis, and scorecard reviews.</li>
+              <li>Enumerator: Restricted exclusively to field survey data collection.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">2. Dashboard &amp; Financial Budget Tracking</h3>
+            <p className="text-slate-700">
+              The home dashboard calculates overall project health ratings (*On Track*, *Needs Attention*, *Target Achieved*) and tracks real expenditure ratios against donor funding using the integrated **+ Add Expense** module.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">3. Logframe &amp; Automated Data Mapping</h3>
+            <p className="text-slate-700">
+              Manage hierarchical indicators across Impact, Outcome, Output, and Activity levels with full demographic disaggregation (General, Male, Female, Total) linked directly to custom survey form fields.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">4. GIS Mapping &amp; Offline-First Sync</h3>
+            <p className="text-slate-700">
+              Capture GPS coordinates in remote field locations across Tanzania. Data is cached locally and automatically synchronized with Firebase Firestore when network connection is restored.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newExp, setNewExp] = useState({ title: '', amount: '', date: '' });
