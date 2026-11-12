@@ -90,11 +90,11 @@ const initialProjects = [
 export default function App() {
   const [projects, setProjects] = useState(initialProjects);
   const [license, setLicense] = useState({
-    code: 'DEMO-5DAYS',
-    level: 'Level 1: 5-Day Demo',
-    demoClaimed: true,
-    activatedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+    code: '',
+    level: '',
+    demoClaimed: false,
+    activatedAt: null,
+    expiresAt: null
   });
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
@@ -172,6 +172,10 @@ export default function App() {
   const [editProj, setEditProj] = useState({ name: '', code: '', donor: '', budget: '', location: '' });
 
   const currentProject = projects.find(p => p.id === activeProjectId) || projects[0] || { id: '', name: 'No Projects', code: '', indicators: [], forms: [], submissions: [] };
+
+  // Check if license is valid or expired
+  const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
+  const hasValidLicense = license.code && !isExpired;
 
   // Dynamic Indicator Calculation Engine with Percentage Support
   const getCalculatedActual = (project, indicator) => {
@@ -398,6 +402,25 @@ export default function App() {
     alert('Data record submitted successfully!');
   };
 
+  // IF NO VALID LICENSE, LOCK APP AND SHOW ACTIVATION / PAYMENT GATEWAY SCREEN
+  if (!hasValidLicense) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-white">
+        <div className="max-w-xl w-full">
+          <div className="text-center mb-6">
+            <div className="bg-indigo-600 p-3 rounded-2xl w-fit mx-auto shadow-lg mb-3">
+              <Layers className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight">GMEL M&amp;E SYSTEM ACCESS GATEWAY</h1>
+            <p className="text-sm text-slate-400 mt-1">Please select a subscription plan or activate your license to proceed.</p>
+          </div>
+          
+          <LicenseActivationView license={license} setLicense={setLicense} isGateway={true} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans border-t-4 border-indigo-600">
       {/* Top Header Bar */}
@@ -461,7 +484,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tab Navigation Menu (License & Activation moved to the very end after Print Forms) */}
+        {/* Tab Navigation Menu */}
         <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 overflow-x-auto">
             {[
@@ -968,7 +991,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
 }
 
 // LICENSE & ACTIVATION COMPONENT WITH ONE-CLICK BUTTONS & EMAIL REQUESTS
-function LicenseActivationView({ license, setLicense }) {
+function LicenseActivationView({ license, setLicense, isGateway = false }) {
   const [inputCode, setInputCode] = useState('');
 
   const activateCode = (codeToActivate) => {
@@ -1060,13 +1083,15 @@ function LicenseActivationView({ license, setLicense }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <KeyRound className="h-6 w-6 text-indigo-600" /> System License &amp; Activation
-        </h2>
-        <p className="text-sm text-slate-500">Manage your subscription tier and system activation keys.</p>
-      </div>
+    <div className={`mx-auto space-y-6 ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
+      {!isGateway && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <KeyRound className="h-6 w-6 text-indigo-600" /> System License &amp; Activation
+          </h2>
+          <p className="text-sm text-slate-500">Manage your subscription tier and system activation keys.</p>
+        </div>
+      )}
 
       {/* Tiered Expiration Alert Banner */}
       {alertBanner && (
@@ -1081,7 +1106,7 @@ function LicenseActivationView({ license, setLicense }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Level 1: One-Click Demo Activation */}
-        <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+        <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200 text-slate-900'}`}>
           <div>
             <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
             <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
@@ -1098,7 +1123,7 @@ function LicenseActivationView({ license, setLicense }) {
         </div>
 
         {/* Level 2: Email Request for Payment */}
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
             <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
@@ -1115,7 +1140,7 @@ function LicenseActivationView({ license, setLicense }) {
         </div>
 
         {/* Level 3: Email Request for Payment */}
-        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
             <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
@@ -1132,30 +1157,34 @@ function LicenseActivationView({ license, setLicense }) {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-        <div className="flex items-center justify-between border-b pb-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Current Active License Status</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+      <div className={`p-6 rounded-2xl shadow-sm border space-y-5 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
+        {!isGateway && (
+          <div className="flex items-center justify-between border-b pb-4">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Current Active License Status</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+              {isExpired ? 'Expired' : 'Active'}
+            </span>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
-            {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-            {isExpired ? 'Expired' : 'Active'}
-          </span>
-        </div>
+        )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="bg-slate-50 p-4 rounded-xl border">
-            <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
-            <p className="font-bold text-slate-900 mt-1">{license.level}</p>
+        {!isGateway && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
+              <p className="font-bold text-slate-900 mt-1">{license.level}</p>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
+              <p className="font-bold text-indigo-600 mt-1">
+                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
+              </p>
+            </div>
           </div>
-          <div className="bg-slate-50 p-4 rounded-xl border">
-            <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
-            <p className="font-bold text-indigo-600 mt-1">
-              {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
-            </p>
-          </div>
-        </div>
+        )}
 
         <form onSubmit={handleActivate} className="space-y-3 pt-2">
           <label className="block text-xs font-bold text-slate-700">Have an Activation Code? Enter it here:</label>
@@ -1166,7 +1195,7 @@ function LicenseActivationView({ license, setLicense }) {
               placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
-              className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm"
+              className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm text-slate-900"
             />
             <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow">
               Activate Key
