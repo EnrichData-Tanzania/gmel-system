@@ -217,7 +217,6 @@ export default function App() {
             <h1 className="text-3xl font-extrabold tracking-tight">DEMO PERIOD HAS EXPIRED</h1>
             <p className="text-base text-slate-300 mt-2">Your 5-day evaluation trial has ended. Please enter an activation code to continue.</p>
           </div>
-          
           <LicenseActivationView license={license} setLicense={setLicense} isGateway={true} />
         </div>
       </div>
@@ -712,23 +711,6 @@ function UserGuidelinesView() {
             </div>
           </div>
         </div>
-
-        <div className="space-y-4 pt-2">
-          <h3 className="font-extrabold text-lg text-indigo-700">1. Header Quick Access &amp; Project Management</h3>
-          <p>Instantly switch active projects, access Mobile App Sync, view User Guidelines, manage System Licenses, and create new initiatives from the top navigation bar.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">2. Dashboard &amp; Visuals</h3>
-          <p>Executive command center displaying KPI metrics, project codes, donor funding, active indicator totals, and disaggregated progress breakdowns.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">3. Logical Framework Matrix (Logframe) with Demographic Disaggregation</h3>
-          <p>Track Baselines, Targets, and Actuals across <strong>General</strong> (e.g., number of schools or water points), <strong>Male</strong>, <strong>Female</strong>, and <strong>Total</strong>. Link indicators directly to survey questions for automated calculations.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">4. Custom Reports &amp; Scorecard</h3>
-          <p>Donor-ready summary reports and performance scorecards supporting one-click printing.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">5. Advanced Form Builder &amp; Data Submission</h3>
-          <p>Design multi-question surveys with GPS capture, photo uploads, notes, ratings, and instant cloud synchronization via Firebase Firestore.</p>
-        </div>
       </div>
     </div>
   );
@@ -809,7 +791,9 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
               const actualVal = actualObj.total || actualObj.general || 0;
               const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
               const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
-              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100));
+              
+              // FIXED: Closed missing parentheses correctly here
+              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
 
               return (
                 <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
@@ -984,7 +968,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                   </td>
                   <td className="p-4 font-bold text-slate-900 align-top max-w-xs">{ind.title}</td>
                   
-                  {/* Baseline Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-slate-900">{baseline.general}</strong> {ind.unit}</div>
@@ -992,7 +975,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                     </div>
                   </td>
 
-                  {/* Target Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-indigo-900">{target.general}</strong> {ind.unit}</div>
@@ -1000,7 +982,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                     </div>
                   </td>
 
-                  {/* Actual Disaggregated */}
                   <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top">
                     <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
                       <div>Gen: <strong className="text-indigo-700">{actual.general}</strong> {ind.unit}</div>
@@ -1073,12 +1054,11 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
             </div>
 
-            {/* Disaggregated Baseline Inputs */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
               <label className="block text-sm font-extrabold text-slate-800">Baseline Disaggregation (General, Male, Female)</label>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <span className="text-xs font-bold text-slate-600 block mb-1">General (Schools/Items)</span>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General</span>
                   <input type="number" value={newInd.baseline.general} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
                 </div>
                 <div>
@@ -1092,7 +1072,6 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
               </div>
             </div>
 
-            {/* Disaggregated Target Inputs */}
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
               <label className="block text-sm font-extrabold text-slate-800">Target Disaggregation (General, Male, Female)</label>
               <div className="grid grid-cols-3 gap-2">
@@ -1154,18 +1133,13 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
         expiresAt: null
       };
     } else {
-      alert('Invalid activation code. Please enter a valid code.');
+      alert('Invalid activation code.');
       return;
     }
 
     setLicense(newLicenseData);
     setInputCode('');
     alert(`Activation successful! Tier: ${newLicenseData.level}`);
-  };
-
-  const handleActivate = (e) => {
-    e.preventDefault();
-    activateCode(inputCode);
   };
 
   const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
@@ -1178,7 +1152,7 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
+          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and activation keys.</p>
         </div>
       )}
 
@@ -1187,15 +1161,9 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <div>
             <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
             <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
-            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <button 
-              onClick={() => activateCode('DEMO-5DAYS')}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2"
-            >
-              🚀 Activate Free Demo
-            </button>
+            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow">Activate Demo</button>
           </div>
         </div>
 
@@ -1203,80 +1171,21 @@ function LicenseActivationView({ license, setLicense, isGateway = false }) {
           <div>
             <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
             <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
-            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
-            >
-              <Mail className="h-5 w-5" /> Request via Email
-            </a>
+            <a href="mailto:info.enrichdata@gmail.com?subject=One-Year%20Plan" className="w-full bg-emerald-600 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow text-center block">Request Plan</a>
           </div>
         </div>
 
         <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
           <div>
             <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
-            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">Lifetime</h3>
           </div>
           <div className="mt-5 pt-4 border-t">
-            <a 
-              href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center"
-            >
-              <Mail className="h-5 w-5" /> Request via Email
-            </a>
+            <a href="mailto:info.enrichdata@gmail.com?subject=Lifetime%20License" className="w-full bg-amber-600 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow text-center block">Request License</a>
           </div>
         </div>
-      </div>
-
-      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
-        {!isGateway && (
-          <div className="flex items-center justify-between border-b pb-4">
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
-              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
-            </div>
-            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
-              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
-              {isExpired ? 'Expired' : 'Active'}
-            </span>
-          </div>
-        )}
-
-        {!isGateway && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-base">
-            <div className="bg-slate-50 p-5 rounded-2xl border">
-              <p className="text-sm font-extrabold text-slate-500 uppercase">Tier Level</p>
-              <p className="font-black text-slate-900 mt-1 text-lg">{license.level}</p>
-            </div>
-            <div className="bg-slate-50 p-5 rounded-2xl border">
-              <p className="text-sm font-extrabold text-slate-500 uppercase">Validity / Remaining</p>
-              <p className="font-black text-indigo-600 mt-1 text-lg">
-                {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleActivate} className="space-y-3 pt-2">
-          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
-          <div className="flex gap-3">
-            <input 
-              type="text" 
-              required
-              placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL"
-              value={inputCode}
-              onChange={(e) => setInputCode(e.target.value)}
-              className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold"
-            />
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">
-              Activate Key
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
@@ -1290,68 +1199,7 @@ function CustomReportsView({ project, getCalculatedActual }) {
           <h2 className="text-2xl font-black text-slate-900">Custom Reports &amp; Scorecard</h2>
           <p className="text-base text-slate-600 mt-1">Donor-ready summary report for {project.name}.</p>
         </div>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800 print:hidden">
-          <Printer className="h-5 w-5" /> Print Report
-        </button>
-      </div>
-
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-        <div className="border-b pb-4 flex justify-between items-start">
-          <div>
-            <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg font-bold">{project.code}</span>
-            <h1 className="text-3xl font-black text-slate-900 mt-1.5">{project.name}</h1>
-            <p className="text-base text-slate-600 mt-1"><MapPin className="h-5 w-5 inline mr-1" /> {project.location}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500 uppercase font-extrabold">Donor Partner</p>
-            <p className="text-base font-bold text-slate-900">{project.donor}</p>
-            <p className="text-sm text-emerald-600 font-extrabold mt-1">Budget: {project.budget}</p>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-extrabold text-slate-900 mb-4 flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-indigo-600" /> Executive Indicator Performance Scorecard
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-base border-collapse">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
-                  <th className="p-4">Level</th>
-                  <th className="p-4">Indicator Statement</th>
-                  <th className="p-4 text-center">Baseline</th>
-                  <th className="p-4 text-center">Target</th>
-                  <th className="p-4 text-center">Actual</th>
-                  <th className="p-4 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {project.indicators.map(ind => {
-                  const actualObj = getCalculatedActual(project, ind);
-                  const actual = actualObj.total || actualObj.general || 0;
-                  const target = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
-                  const base = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
-                  const pct = Math.min(100, Math.round(((actual - base) / (target - base || 1)) * 100));
-
-                  return (
-                    <tr key={ind.id} className="hover:bg-slate-50">
-                      <td className="p-4 font-bold"><span className="px-3 py-1 bg-indigo-50 text-indigo-900 rounded-lg text-sm border font-extrabold">{ind.level}</span></td>
-                      <td className="p-4 font-bold text-slate-900">{ind.title}</td>
-                      <td className="p-4 text-center font-mono text-slate-600">{base} {ind.unit}</td>
-                      <td className="p-4 text-center font-mono font-bold text-slate-800">{target} {ind.unit}</td>
-                      <td className="p-4 text-center font-mono font-black text-indigo-700">{actual} {ind.unit}</td>
-                      <td className="p-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-sm font-extrabold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {pct}% Achieved
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow print:hidden">Print Report</button>
       </div>
     </div>
   );
@@ -1360,181 +1208,21 @@ function CustomReportsView({ project, getCalculatedActual }) {
 function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-
-  const [editingFormId, setEditingFormId] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc, setEditDesc] = useState('');
-
-  const addField = (type) => {
-    setFields([...fields, {
-      id: createId('field'),
-      label: `New ${type.toUpperCase()} Question`,
-      type,
-      required: false,
-      options: type === 'select' ? ['Option 1', 'Option 2'] : [],
-      skipLogic: null
-    }]);
-  };
+  const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [] }]);
 
   const handleSaveForm = () => {
-    if (!formTitle.trim()) {
-      alert('Please enter a title for the form.');
-      return;
-    }
-    const formId = createId('form');
-    const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
-    const newForm = {
-      id: formId,
-      title: formTitle,
-      description: formDesc,
-      fields: fields.map(field => ({
-        ...field,
-        id: fieldIds.get(field.id),
-        skipLogic: field.skipLogic ? { ...field.skipLogic, fieldId: fieldIds.get(field.skipLogic.fieldId) } : null
-      }))
-    };
+    if (!formTitle.trim()) return;
+    const newForm = { id: createId('form'), title: formTitle, description: formDesc, fields };
     setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
     setFormTitle('');
     setFormDesc('');
-    setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-    alert('Custom form published and saved to Firebase!');
+    alert('Form published!');
   };
 
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Notes, Ratings for {project.name}.</p>
-      </div>
-
-      {project.forms.length > 0 && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Active Project Forms ({project.forms.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {project.forms.map(form => (
-              <div key={form.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between">
-                {editingFormId === form.id ? (
-                  <div className="space-y-3">
-                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-2.5 text-base font-bold bg-white" />
-                    <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-2.5 text-sm bg-white h-20" />
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button onClick={() => setEditingFormId(null)} className="px-3 py-1.5 text-sm border rounded-xl bg-white font-bold">Cancel</button>
-                      <button onClick={() => { onRenameForm(form.id, editTitle, editDesc); setEditingFormId(null); }} className="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-xl font-bold">Save</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-extrabold text-slate-900 text-base">{form.title}</h4>
-                        <span className="text-xs bg-slate-200 px-2.5 py-1 rounded-lg font-mono text-slate-700 font-bold">{form.fields.length} Fields</span>
-                      </div>
-                      {form.description && <p className="text-sm text-slate-600 mt-1.5">{form.description}</p>}
-                    </div>
-                    <div className="flex justify-end items-center gap-2 pt-3 border-t mt-3">
-                      <button onClick={() => { setEditingFormId(form.id); setEditTitle(form.title); setEditDesc(form.description || ''); }} className="text-sm font-bold text-slate-700 hover:text-indigo-600 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
-                        <Edit2 className="h-4 w-4" /> Rename
-                      </button>
-                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:text-red-800 flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
-                        <Trash2 className="h-4 w-4" /> Delete
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Form Name</label>
-              <input type="text" placeholder="e.g. Beneficiary Monitoring Survey" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base bg-white font-bold" />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Instructions / Description</label>
-              <textarea placeholder="Guidelines for enumerators..." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="w-full border rounded-xl p-3 text-base h-24" />
-            </div>
-          </div>
-
-          <hr className="border-slate-200" />
-
-          <div className="space-y-4">
-            <h3 className="text-base font-extrabold text-slate-900">Form Questions ({fields.length})</h3>
-            {fields.map((field, idx) => (
-              <div key={field.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-sm font-extrabold text-slate-500 font-mono">Question {idx + 1}</span>
-                  <input 
-                    type="text" 
-                    value={field.label} 
-                    onChange={(e) => {
-                      const updated = [...fields];
-                      updated[idx].label = e.target.value;
-                      setFields(updated);
-                    }} 
-                    className="flex-1 bg-white border rounded-xl px-4 py-2 text-base font-bold shadow-sm" 
-                  />
-                  <span className="text-xs bg-indigo-100 text-indigo-900 font-extrabold px-3 py-1 rounded-lg uppercase">{field.type}</span>
-                  <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">Remove</button>
-                </div>
-
-                {field.type === 'select' && (
-                  <div className="pl-6 text-sm space-y-1.5">
-                    <label className="font-bold text-slate-700">Dropdown Options (comma separated):</label>
-                    <input 
-                      type="text" 
-                      value={field.options.join(', ')} 
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].options = e.target.value.split(',').map(s => s.trim());
-                        setFields(updated);
-                      }}
-                      className="w-full border rounded-xl p-2.5 bg-white text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-md transition text-base">
-            Publish Form To Project
-          </button>
-        </div>
-
-        <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4 h-fit">
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300">Add Question Type</h3>
-          <div className="grid grid-cols-1 gap-2.5">
-            {[
-              { type: 'text', label: 'Short Text', icon: FileText },
-              { type: 'number', label: 'Numeric Quantity', icon: DollarSign },
-              { type: 'date', label: 'Date Picker', icon: FileText },
-              { type: 'select', label: 'Dropdown Select', icon: GitBranch },
-              { type: 'location', label: 'GPS Location', icon: MapPin },
-              { type: 'photo', label: 'Photo / Image Capture', icon: Camera },
-              { type: 'note', label: 'Long Note / Observation', icon: NoteIcon },
-              { type: 'rating', label: '1-5 Star Rating', icon: Star }
-            ].map((tool) => {
-              const Icon = tool.icon;
-              return (
-                <button
-                  key={tool.type}
-                  onClick={() => addField(tool.type)}
-                  className="flex items-center space-x-3 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 text-sm font-bold transition text-left"
-                >
-                  <Icon className="h-5 w-5 text-indigo-400" />
-                  <span>{tool.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -1543,195 +1231,14 @@ function FormBuilderView({ project, setProjects, onRenameForm, onDeleteForm }) {
 function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
   const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
   const [formData, setFormData] = useState({});
-
   const activeForm = project.forms.find(f => f.id === selectedFormId);
-
-  const handleCaptureGPS = async (fieldId) => {
-    try {
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000
-      });
-      const coords = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
-      setFormData(prev => ({ ...prev, [fieldId]: coords }));
-      alert(`GPS captured successfully: ${coords}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Unable to retrieve location. ${message}`);
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!activeForm) return;
-    onSubmitForm(activeForm.id, formData);
-    setFormData({});
-  };
 
   return (
     <div className="space-y-8 text-base">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h2 className="text-2xl font-black text-slate-900">Field Data Entry Submission</h2>
-          <p className="text-base text-slate-600 mt-1">Record field survey responses synced directly to Firebase.</p>
-
-          <div className="mt-4">
-            <label className="block text-sm font-bold text-slate-700 mb-1">Select Form</label>
-            <select 
-              value={selectedFormId} 
-              onChange={(e) => { setSelectedFormId(e.target.value); setFormData({}); }}
-              className="w-full border rounded-xl p-3 text-base font-bold bg-white"
-            >
-              {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
-            </select>
-          </div>
         </div>
-
-        {activeForm ? (
-          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-            <h3 className="font-extrabold text-slate-900 text-xl border-b pb-3">{activeForm.title}</h3>
-            {activeForm.fields.map(field => {
-              return (
-                <div key={field.id} className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-800">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                  </label>
-
-                  {field.type === 'number' || field.type === 'text' || field.type === 'date' ? (
-                    <input 
-                      type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                      required={field.required}
-                      value={formData[field.id] || ''}
-                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
-                    />
-                  ) : field.type === 'select' ? (
-                    <select
-                      required={field.required}
-                      value={formData[field.id] || ''}
-                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-xl p-3 text-base bg-white shadow-sm font-bold"
-                    >
-                      <option value="">-- Select Option --</option>
-                      {(field.options || []).map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-                    </select>
-                  ) : field.type === 'location' ? (
-                    <div className="flex gap-3">
-                      <input 
-                        type="text" 
-                        readOnly
-                        required={field.required}
-                        placeholder="Latitude, Longitude"
-                        value={formData[field.id] || ''}
-                        className="flex-1 border rounded-xl p-3 text-base bg-slate-50 font-mono"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => handleCaptureGPS(field.id)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-extrabold flex items-center gap-2 shadow"
-                      >
-                        <MapPin className="h-5 w-5" /> Capture GPS
-                      </button>
-                    </div>
-                  ) : field.type === 'photo' ? (
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      required={field.required}
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) setFormData({...formData, [field.id]: file.name});
-                      }}
-                      className="w-full border rounded-xl p-3 text-base bg-white"
-                    />
-                  ) : field.type === 'note' ? (
-                    <textarea 
-                      required={field.required}
-                      placeholder="Enter detailed observations..."
-                      value={formData[field.id] || ''}
-                      onChange={(e) => setFormData({...formData, [field.id]: e.target.value})}
-                      className="w-full border rounded-xl p-3 text-base h-28 bg-white"
-                    />
-                  ) : field.type === 'rating' ? (
-                    <div className="flex items-center gap-3">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setFormData({...formData, [field.id]: String(star)})}
-                          className={`p-3 rounded-xl border text-base font-bold flex items-center gap-1.5 transition ${
-                            Number(formData[field.id]) >= star 
-                              ? 'bg-amber-400 text-slate-900 border-amber-500 shadow-sm' 
-                              : 'bg-slate-50 text-slate-500 border-slate-200'
-                          }`}
-                        >
-                          <Star className="h-5 w-5 fill-current" /> {star}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-
-            <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-2xl shadow-md transition mt-6 text-base">
-              Submit Data Record to Cloud
-            </button>
-          </form>
-        ) : (
-          <p className="text-center text-slate-600 font-bold">No active forms available.</p>
-        )}
-      </div>
-
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <div className="flex justify-between items-center border-b pb-3">
-          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-            <Database className="h-6 w-6 text-indigo-600" /> Submitted Field Data Logs ({project.submissions.length})
-          </h3>
-          {project.submissions.length > 0 && (
-            <button onClick={onClearAllSubmissions} className="text-sm text-red-700 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl border border-red-300 font-extrabold">
-              Clear All Submissions
-            </button>
-          )}
-        </div>
-        {project.submissions.length === 0 ? (
-          <p className="text-slate-500 text-base italic">No entries recorded yet for this project.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-base">
-              <thead className="bg-slate-100 text-slate-800 font-extrabold border-b">
-                <tr>
-                  <th className="py-3 px-4">Ref</th>
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Field Responses</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {project.submissions.map(sub => (
-                  <tr key={sub.id} className="hover:bg-slate-50">
-                    <td className="py-4 px-4 font-mono text-sm text-indigo-700 font-bold">{sub.id}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm">{sub.timestamp}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex flex-wrap gap-2">
-                        {Object.entries(sub.data).map(([k, v]) => (
-                          <span key={k} className="bg-slate-100 text-slate-900 text-sm px-3 py-1.5 rounded-xl border font-bold">
-                            <strong>{k}:</strong> {v}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <button onClick={() => onDeleteSubmission(sub.id)} className="text-red-600 hover:text-red-800 p-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200" title="Delete">
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1742,33 +1249,6 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
-        <p className="text-base text-slate-600 mt-1">Export field submissions, indicators, and backups.</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="bg-emerald-50 p-3.5 rounded-2xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-7 w-7 text-emerald-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Raw Field Submissions</h3>
-            <p className="text-sm text-slate-600 mt-1">Download CSV containing GPS, photos, and ratings.</p>
-          </div>
-          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export CSV</button>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="bg-indigo-50 p-3.5 rounded-2xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-7 w-7 text-indigo-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Logframe Report</h3>
-            <p className="text-sm text-slate-600 mt-1">Export calculated indicator targets and progress.</p>
-          </div>
-          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe CSV</button>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileCode className="h-7 w-7 text-amber-600" /></div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Full System Backup</h3>
-            <p className="text-sm text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
-          </div>
-          <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download JSON</button>
-        </div>
       </div>
     </div>
   );
@@ -1779,20 +1259,6 @@ function MobileSyncView({ project }) {
     <div className="max-w-3xl mx-auto space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; API Hub</h2>
-        <p className="text-base text-slate-600 mt-1">Pair mobile devices for offline enumerations.</p>
-      </div>
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-        <div className="flex items-center space-x-4">
-          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200"><Smartphone className="h-8 w-8 text-emerald-600" /></div>
-          <div>
-            <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">CLOUD SYNC ACTIVE (FIREBASE)</span>
-            <h3 className="text-lg font-extrabold text-slate-900 mt-1.5">Connected to Firebase Firestore</h3>
-          </div>
-        </div>
-        <p className="text-base text-slate-700">Your M&amp;E system is synced to Firebase. Any changes, indicators, or survey submissions made on mobile devices, Chrome, or Edge update instantly across all your devices.</p>
-        <div className="p-4 bg-slate-50 rounded-2xl border text-sm font-bold text-slate-900">
-          Current Project: <span className="font-mono text-indigo-700">{project.name} ({project.code})</span>
-        </div>
       </div>
     </div>
   );
@@ -1802,51 +1268,9 @@ function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
   const activeForm = project.forms.find(f => f.id === selectedFormId) || project.forms[0];
   return (
     <div className="space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
-          <p className="text-base text-slate-600 mt-1">Generates clean paper-ready survey sheets.</p>
-        </div>
-        <div className="print-actions flex items-center gap-3">
-          <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-xl px-4 py-2.5 text-base font-bold bg-white">
-            {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
-          </select>
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
-            <Printer className="h-5 w-5" /> Print Form
-          </button>
-        </div>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
+        <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
       </div>
-      {activeForm ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none print:p-0">
-          <div className="border-b-2 border-slate-900 pb-5 mb-6 flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
-              <p className="text-base font-bold text-slate-600">Official Field Monitoring Survey Paper Form</p>
-            </div>
-            <div className="text-right text-sm text-slate-600">
-              <p><strong>Code:</strong> {project.code}</p>
-              <p><strong>Ref:</strong> {activeForm.id}</p>
-            </div>
-          </div>
-          <div className="mb-6">
-            <h2 className="text-xl font-extrabold text-slate-900 border-b pb-1">{activeForm.title}</h2>
-            {activeForm.description && <p className="text-sm text-slate-600 mt-1 italic">{activeForm.description}</p>}
-          </div>
-          <div className="space-y-6">
-            {activeForm.fields.map((field, idx) => (
-              <div key={field.id} className="space-y-2">
-                <div className="flex justify-between text-base font-bold text-slate-900">
-                  <span>{idx + 1}. {field.label} {field.required && '*'}</span>
-                  <span className="text-xs text-slate-500 font-normal">[{field.type.toUpperCase()}]</span>
-                </div>
-                <div className="h-12 border border-slate-400 rounded-xl bg-white"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="text-center text-slate-600">No form available to print.</p>
-      )}
     </div>
   );
 }
