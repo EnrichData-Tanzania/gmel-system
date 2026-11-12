@@ -26,7 +26,8 @@ import {
   Star,
   FileText as NoteIcon,
   GitBranch,
-  MoreHorizontal
+  MoreHorizontal,
+  CheckCircle2
 } from 'lucide-react';
 
 // ==========================================
@@ -62,7 +63,7 @@ const initialProjects = [
     budget: '$30,000',
     location: 'Arusha Region',
     indicators: [
-      { id: 'ind-1', level: 'Outcome', title: '% Water points functional during dry seasons', baseline: 0, target: 77, actual: 0, unit: '%', mappedFieldId: null, calcType: 'AVG' },
+      { id: 'ind-1', level: 'Outcome', title: '% Water points functional during dry seasons', baseline: 0, target: 77, actual: 0, unit: '%', mappedFieldId: null, calcType: 'PERCENTAGE' },
       { id: 'ind-2', level: 'Output', title: '# of new or rehabilitated water points', baseline: 0, target: 100, actual: 0, unit: 'number', mappedFieldId: null, calcType: 'SUM' }
     ],
     forms: [
@@ -158,20 +159,28 @@ export default function App() {
 
   const currentProject = projects.find(p => p.id === activeProjectId) || projects[0] || { id: '', name: 'No Projects', code: '', indicators: [], forms: [], submissions: [] };
 
-  // Dynamic Indicator Calculation Engine
+  // Dynamic Indicator Calculation Engine with Percentage Support
   const getCalculatedActual = (project, indicator) => {
     if (!indicator || !indicator.mappedFieldId) return indicator?.actual || 0;
 
     let total = 0;
     let count = 0;
     let max = 0;
+    let matchingSubmissions = 0;
+    const totalSubmissions = (project.submissions || []).length;
 
     (project.submissions || []).forEach(sub => {
-      const val = parseFloat(sub.data[indicator.mappedFieldId]);
-      if (!isNaN(val)) {
-        total += val;
+      const val = sub.data[indicator.mappedFieldId];
+      const numVal = parseFloat(val);
+      
+      if (!isNaN(numVal)) {
+        total += numVal;
         count += 1;
-        if (val > max) max = val;
+        if (numVal > max) max = numVal;
+      }
+
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        matchingSubmissions += 1;
       }
     });
 
@@ -179,6 +188,9 @@ export default function App() {
     if (indicator.calcType === 'AVG') return count > 0 ? (total / count).toFixed(1) : indicator.baseline;
     if (indicator.calcType === 'COUNT') return count;
     if (indicator.calcType === 'MAX') return max;
+    if (indicator.calcType === 'PERCENTAGE') {
+      return totalSubmissions > 0 ? ((matchingSubmissions / totalSubmissions) * 100).toFixed(1) : indicator.baseline;
+    }
     return indicator.actual;
   };
 
@@ -441,6 +453,7 @@ export default function App() {
             {[
               { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
               { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
+              { id: 'reports', label: 'Custom Reports', icon: FileText },
               { id: 'builder', label: 'Form Builder', icon: FileText },
               { id: 'entry', label: 'Data Submission', icon: ListCheck },
               { id: 'export', label: 'Export Suite', icon: Download },
@@ -471,6 +484,7 @@ export default function App() {
       <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white">
         {activeTab === 'dashboard' && <DashboardView project={currentProject} getCalculatedActual={getCalculatedActual} onOpenEditProject={openEditProject} />}
         {activeTab === 'logframe' && <LogframeView project={currentProject} getCalculatedActual={getCalculatedActual} setProjects={setProjects} />}
+        {activeTab === 'reports' && <CustomReportsView project={currentProject} getCalculatedActual={getCalculatedActual} />}
         {activeTab === 'builder' && <FormBuilderView project={currentProject} setProjects={setProjects} onRenameForm={handleRenameForm} onDeleteForm={handleDeleteForm} />}
         {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
         {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
@@ -482,6 +496,7 @@ export default function App() {
         {[
           { id: 'dashboard', label: 'Home', icon: BarChart3 },
           { id: 'logframe', label: 'Indicators', icon: TrendingUp },
+          { id: 'reports', label: 'Reports', icon: FileText },
           { id: 'entry', label: 'Collect', icon: ListCheck },
           { id: 'more', label: 'More', icon: MoreHorizontal }
         ].map(item => {
@@ -842,7 +857,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
             {project.indicators.map((ind) => {
               const actual = getCalculatedActual(project, ind);
               const pct = Math.min(100, Math.round(((actual - ind.baseline) / (ind.target - ind.baseline || 1)) * 100));
-              const availableFields = project.forms.flatMap(f => f.fields.filter(field => field.type === 'number' || field.type === 'rating').map(field => ({
+              const availableFields = project.forms.flatMap(f => f.fields.map(field => ({
                 fieldId: field.id, label: `${f.title} → ${field.label}`
               })));
 
@@ -883,6 +898,7 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
                           <option value="AVG">AVG</option>
                           <option value="COUNT">COUNT</option>
                           <option value="MAX">MAX</option>
+                          <option value="PERCENTAGE">PERCENTAGE (%)</option>
                         </select>
                       )}
                     </div>
@@ -930,6 +946,92 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// CUSTOM REPORTS COMPONENT
+function CustomReportsView({ project, getCalculatedActual }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Custom Reports &amp; Scorecard</h2>
+          <p className="text-sm text-slate-500">Donor-ready summary report for {project.name}.</p>
+        </div>
+        <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800 print:hidden">
+          <Printer className="h-4 w-4" /> Print Report
+        </button>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        <div className="border-b pb-4 flex justify-between items-start">
+          <div>
+            <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded font-bold">{project.code}</span>
+            <h1 className="text-2xl font-black text-slate-900 mt-1">{project.name}</h1>
+            <p className="text-sm text-slate-600 mt-0.5"><MapPin className="h-4 w-4 inline mr-1" /> {project.location}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-500 uppercase font-bold">Donor Partner</p>
+            <p className="text-sm font-bold text-slate-900">{project.donor}</p>
+            <p className="text-xs text-emerald-600 font-bold mt-1">Budget: {project.budget}</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-indigo-600" /> Executive Indicator Performance Scorecard
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 text-xs uppercase font-bold border-b">
+                  <th className="p-3">Level</th>
+                  <th className="p-3">Indicator Statement</th>
+                  <th className="p-3 text-center">Baseline</th>
+                  <th className="p-3 text-center">Target</th>
+                  <th className="p-3 text-center">Actual</th>
+                  <th className="p-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {project.indicators.map(ind => {
+                  const actual = Number(getCalculatedActual(project, ind));
+                  const target = ind.target || 1;
+                  const pct = Math.min(100, Math.round(((actual - ind.baseline) / (target - ind.baseline || 1)) * 100));
+                  return (
+                    <tr key={ind.id} className="hover:bg-slate-50">
+                      <td className="p-3 font-bold"><span className="px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded text-xs border">{ind.level}</span></td>
+                      <td className="p-3 font-semibold text-slate-900">{ind.title}</td>
+                      <td className="p-3 text-center font-mono text-slate-600">{ind.baseline} {ind.unit}</td>
+                      <td className="p-3 text-center font-mono font-bold text-slate-800">{ind.target} {ind.unit}</td>
+                      <td className="p-3 text-center font-mono font-extrabold text-indigo-700">{actual} {ind.unit}</td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {pct}% Achieved
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+          <div className="p-4 bg-slate-50 rounded-xl border">
+            <h4 className="font-bold text-slate-900 text-sm mb-1">Total Submissions Recorded</h4>
+            <p className="text-2xl font-extrabold text-indigo-600 font-mono">{project.submissions.length}</p>
+            <p className="text-xs text-slate-500 mt-1">Field monitoring surveys logged across project sites.</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl border">
+            <h4 className="font-bold text-slate-900 text-sm mb-1">Active Survey Forms</h4>
+            <p className="text-2xl font-extrabold text-emerald-600 font-mono">{project.forms.length}</p>
+            <p className="text-xs text-slate-500 mt-1">Configured data collection instruments with GPS and skip logic.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1430,7 +1532,7 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
             <div className="bg-amber-50 p-3 rounded-xl w-fit mb-3 border border-amber-200"><FileCode className="h-6 w-6 text-amber-600" /></div>
-            <h3 className="font-bold text-slate-900">Full System Backup</h3>
+            <h3 className="text-2xl font-extrabold text-slate-900">Full System Backup</h3>
             <p className="text-xs text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
           </div>
           <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md">Download JSON</button>
