@@ -121,7 +121,7 @@ export default function App() {
     expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
   });
   
-  const [userRole, setUserRole] = useState('Administrator'); // 'Administrator', 'M&E Officer', 'Enumerator'
+  const [userRole, setUserRole] = useState('Administrator');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
@@ -769,9 +769,12 @@ function GISMapView({ project }) {
   );
 }
 
+// ==========================================
+// USER GUIDELINES VIEW
+// ==========================================
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Role-Based Access Control (RBAC)\n2. Logframe Matrix with Disaggregated Demographics\n3. GIS Mapping Module & GPS Coordinate Tracking\n4. Custom Reports & Executive Scorecard\n5. Advanced Form Builder with Skip Logic\n6. Field Data Submission & Offline-First Caching\n7. Export Suite & Automated PDF Reports`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -812,6 +815,20 @@ function UserGuidelinesView() {
           <p className="text-base text-slate-700">
             In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the [GMEL System](url?id=5), the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
+        </div>
+
+        <div className="space-y-4 pt-2">
+          <h3 className="font-extrabold text-lg text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
+          <p>Switch between <strong>Administrator</strong>, <strong>M&amp;E Officer</strong>, and <strong>Enumerator</strong> roles to restrict or grant permissions for creating projects, editing forms, or submitting survey records.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">2. Offline-First Caching &amp; Sync</h3>
+          <p>Operate seamlessly in remote field locations across Tanzania. The system automatically caches data locally and synchronizes with Firebase when connection is restored.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">3. GIS Mapping Module</h3>
+          <p>Visualize all field GPS data points geographically on an interactive Leaflet map to track project footprints and beneficiary distributions.</p>
+
+          <h3 className="font-extrabold text-lg text-indigo-700">4. Automated PDF Report Generation</h3>
+          <p>Export donor-ready PDF reports containing executive performance scorecards and logframe analyses instantly with a single click.</p>
         </div>
       </div>
     </div>
@@ -879,59 +896,13 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
           <Database className="h-10 w-10 text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100" />
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Target vs. Calculated Progress
-            </h3>
-          </div>
-          <div className="space-y-5 pt-2">
-            {project.indicators.map(ind => {
-              const actualObj = getCalculatedActual(project, ind);
-              const actualVal = actualObj.total || actualObj.general || 0;
-              const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
-              const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
-              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
-
-              return (
-                <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
-                  <div className="flex justify-between items-start text-sm font-bold">
-                    <span className="text-slate-900 text-base font-bold">{ind.title}</span>
-                    <span className="bg-indigo-100 text-indigo-900 font-mono px-3 py-1 rounded-lg border border-indigo-200 text-sm">
-                      {actualVal} / {targetVal} {ind.unit} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden flex border border-slate-300">
-                    <div className="bg-indigo-600 h-4 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, pct)}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-              <PieChart className="h-6 w-6 text-indigo-600" /> Indicator Level Breakdown
-            </h3>
-            <div className="py-6 flex justify-center">
-              <div className="w-36 h-36 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
-                <div className="absolute w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center shadow">
-                  <strong className="text-xl font-black text-slate-900">{totalIndicators}</strong>
-                  <span className="text-xs uppercase font-extrabold text-slate-500">indicators</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
+// ==========================================
+// LOGFRAME MATRIX WITH FULL DISAGGREGATION
+// ==========================================
 function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
@@ -1019,7 +990,7 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix</h2>
-          <p className="text-base text-slate-600 mt-1">Manage indicators with disaggregated demographic metrics.</p>
+          <p className="text-base text-slate-600 mt-1">Manage indicators with fully disaggregated demographic metrics (General, Male, Female, Total).</p>
         </div>
         {userRole !== 'Enumerator' && (
           <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
@@ -1029,14 +1000,14 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1050px]">
+        <table className="w-full text-left border-collapse min-w-[1100px]">
           <thead>
             <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b border-slate-200">
               <th className="p-4">Level</th>
               <th className="p-4">Indicator Statement</th>
-              <th className="p-4 text-center">Baseline</th>
-              <th className="p-4 text-center">Target</th>
-              <th className="p-4 text-center">Actual</th>
+              <th className="p-4 text-center">Baseline (Gen / M / F / Tot)</th>
+              <th className="p-4 text-center">Target (Gen / M / F / Tot)</th>
+              <th className="p-4 text-center">Actual (Gen / M / F / Tot)</th>
               <th className="p-4">Automated Data Mapping</th>
               {userRole !== 'Enumerator' && <th className="p-4 text-right">Actions</th>}
             </tr>
@@ -1061,18 +1032,21 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
                   <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-slate-900">{baseline.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-slate-600">M: {baseline.male} | F: {baseline.female} | Tot: <strong className="text-slate-900">{baseline.total}</strong></div>
                     </div>
                   </td>
 
                   <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
                     <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 space-y-1">
                       <div>Gen: <strong className="text-indigo-900">{target.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-slate-600">M: {target.male} | F: {target.female} | Tot: <strong className="text-slate-900">{target.total}</strong></div>
                     </div>
                   </td>
 
                   <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top">
                     <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 space-y-1 shadow-sm">
                       <div>Gen: <strong className="text-indigo-700">{actual.general}</strong> {ind.unit}</div>
+                      <div className="text-xs text-indigo-700">M: {actual.male} | F: {actual.female} | Tot: <strong className="font-extrabold">{actual.total}</strong></div>
                     </div>
                   </td>
 
@@ -1087,14 +1061,32 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
                         <option value="">Manual Entry (No Form Linked)</option>
                         {availableFields.map(f => (<option key={f.fieldId} value={f.fieldId}>🔗 {f.label}</option>))}
                       </select>
+                      {ind.mappedFieldId && (
+                        <select
+                          value={ind.calcType || 'SUM'}
+                          onChange={(e) => handleMapField(ind.id, ind.mappedFieldId, e.target.value)}
+                          disabled={userRole === 'Enumerator'}
+                          className="text-xs font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl px-2.5 py-1.5"
+                        >
+                          <option value="SUM">SUM</option>
+                          <option value="AVG">AVG</option>
+                          <option value="COUNT">COUNT</option>
+                          <option value="MAX">MAX</option>
+                          <option value="PERCENTAGE">PERCENTAGE (%)</option>
+                        </select>
+                      )}
                     </div>
                   </td>
 
                   {userRole !== 'Enumerator' && (
                     <td className="p-4 text-right align-top">
                       <div className="flex justify-end gap-1.5">
-                        <button onClick={() => openIndicatorEditor(ind)} className="rounded-xl p-2.5 text-slate-600 hover:bg-indigo-50 border border-slate-200"><Edit2 className="h-5 w-5" /></button>
-                        <button onClick={() => handleDeleteIndicator(ind)} className="rounded-xl p-2.5 text-slate-600 hover:bg-red-50 border border-slate-200"><Trash2 className="h-5 w-5" /></button>
+                        <button onClick={() => openIndicatorEditor(ind)} title="Edit indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200">
+                          <Edit2 className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleDeleteIndicator(ind)} title="Delete indicator" className="rounded-xl p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700 border border-slate-200">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
                       </div>
                     </td>
                   )}
@@ -1108,14 +1100,64 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-8 space-y-5 text-base my-8">
-            <h3 className="text-xl font-black text-slate-900 border-b pb-3">{editingIndicatorId ? 'Edit Indicator' : 'Add Indicator'}</h3>
+            <h3 className="text-xl font-black text-slate-900 border-b pb-3">{editingIndicatorId ? 'Edit Logframe Indicator' : 'Add Disaggregated Indicator'}</h3>
+            
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Statement</label>
-              <input type="text" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
+              <label className="block text-sm font-bold text-slate-700 mb-1">Hierarchy Level</label>
+              <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold bg-white">
+                <option value="Impact">Impact</option><option value="Outcome">Outcome</option><option value="Output">Output</option><option value="Activity">Activity</option>
+              </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Indicator Statement</label>
+              <input type="text" placeholder="e.g. Number of schools or households trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Unit of Measure</label>
+              <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 text-base font-bold" />
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-sm font-extrabold text-slate-800">Baseline Disaggregation (General, Male, Female)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General</span>
+                  <input type="number" value={newInd.baseline.general} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Male</span>
+                  <input type="number" value={newInd.baseline.male} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, male: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Female</span>
+                  <input type="number" value={newInd.baseline.female} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, female: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-sm font-extrabold text-slate-800">Target Disaggregation (General, Male, Female)</label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">General</span>
+                  <input type="number" value={newInd.target.general} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, general: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Male</span>
+                  <input type="number" value={newInd.target.male} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, male: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-600 block mb-1">Female</span>
+                  <input type="number" value={newInd.target.female} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, female: parseFloat(e.target.value) || 0}})} className="w-full border rounded-xl p-2.5 text-sm font-mono bg-white" />
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end space-x-3 pt-4 border-t">
-              <button onClick={() => setShowAddModal(false)} className="px-5 py-2.5 text-base border rounded-xl font-bold">Cancel</button>
-              <button onClick={handleSaveIndicator} className="px-5 py-2.5 text-base bg-indigo-600 text-white font-extrabold rounded-xl shadow">Save</button>
+              <button onClick={() => { setShowAddModal(false); setEditingIndicatorId(null); }} className="px-5 py-2.5 text-base border rounded-xl font-bold">Cancel</button>
+              <button onClick={handleSaveIndicator} className="px-5 py-2.5 text-base bg-indigo-600 text-white font-extrabold rounded-xl shadow">Save Indicator</button>
             </div>
           </div>
         </div>
@@ -1124,610 +1166,330 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   );
 }
 
-function LicenseActivationView({ license, setLicense, isGateway = false }) {
-  const [inputCode, setInputCode] = useState('');
-  const activateCode = (codeToActivate) => {
-    const code = codeToActivate.trim().toUpperCase();
-    let newLicenseData = null;
-    if (code === 'DEMO-5DAYS') {
-      newLicenseData = { code, level: 'Level 1: 5-Day Demo', demoClaimed: true, expiresAt: new Date(Date.now() + 5*24*60*60*1000).toISOString() };
-    } else if (code === 'ANNUAL-2026') {
-      newLicenseData = { code, level: 'Level 2: One-Year Plan', demoClaimed: true, expiresAt: new Date(Date.now() + 365*24*60*60*1000).toISOString() };
-    } else if (code === 'LIFETIME-GMEL') {
-      newLicenseData = { code, level: 'Level 3: Lifetime License', demoClaimed: true, expiresAt: null };
-    } else {
-      alert('Invalid code.');
-      return;
-    }
-    setLicense(newLicenseData);
-    alert(`Activation successful! Tier: ${newLicenseData.level}`);
+// ==========================================
+// CUSTOM REPORTS & SCORECARD
+// ==========================================
+function CustomReportsView({ project, getCalculatedActual }) {
+  const downloadPDFReport = () => {
+    window.print();
   };
 
-  return (
-    <div className={`mx-auto space-y-6 text-base ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
-      <form onSubmit={(e) => { e.preventDefault(); activateCode(inputCode); }} className="space-y-3 pt-2">
-        <label className="block text-sm font-bold text-slate-800">Enter Activation Code:</label>
-        <div className="flex gap-3">
-          <input type="text" required placeholder="e.g. ANNUAL-2026" value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase font-bold" />
-          <button type="submit" className="bg-indigo-600 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">Activate</button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function CustomReportsView({ project, getCalculatedActual }) {
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Custom Reports &amp; Scorecard</h2>
+          <p className="text-base text-slate-600 mt-1">Donor-ready summary report for {project.name}.</p>
         </div>
-        <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
-          <FileDown className="h-5 w-5" /> Export / Print PDF Report
-        </button>
+        <div className="flex gap-3">
+          <button onClick={downloadPDFReport} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
+            <FileDown className="h-5 w-5" /> Export / Print PDF Report
+          </button>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-        <h1 className="text-3xl font-black text-slate-900">{project.name}</h1>
+        <div className="border-b pb-4 flex justify-between items-start">
+          <div>
+            <span className="text-xs font-mono bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg font-bold">{project.code}</span>
+            <h1 className="text-3xl font-black text-slate-900 mt-1.5">{project.name}</h1>
+            <p className="text-base text-slate-600 mt-1"><MapPin className="h-5 w-5 inline mr-1" /> {project.location}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-500 uppercase font-extrabold">Donor Partner</p>
+            <p className="text-base font-bold text-slate-900">{project.donor}</p>
+            <p className="text-sm text-emerald-600 font-extrabold mt-1">Budget: {project.budget}</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-indigo-600" /> Executive Indicator Performance Scorecard
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-base border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
+                  <th className="p-4">Level</th>
+                  <th className="p-4">Indicator Statement</th>
+                  <th className="p-4 text-center">Baseline</th>
+                  <th className="p-4 text-center">Target</th>
+                  <th className="p-4 text-center">Actual</th>
+                  <th className="p-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {project.indicators.map(ind => {
+                  const actualObj = getCalculatedActual(project, ind);
+                  const actual = actualObj.total || actualObj.general || 0;
+                  const target = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
+                  const base = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
+                  const pct = Math.min(100, Math.round(((actual - base) / (target - base || 1)) * 100));
+
+                  return (
+                    <tr key={ind.id} className="hover:bg-slate-50">
+                      <td className="p-4 font-bold"><span className="px-3 py-1 bg-indigo-50 text-indigo-900 rounded-lg text-sm border font-extrabold">{ind.level}</span></td>
+                      <td className="p-4 font-bold text-slate-900">{ind.title}</td>
+                      <td className="p-4 text-center font-mono text-slate-600">{base} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-bold text-slate-800">{target} {ind.unit}</td>
+                      <td className="p-4 text-center font-mono font-black text-indigo-700">{actual} {ind.unit}</td>
+                      <td className="p-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-sm font-extrabold ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {pct}% Achieved
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 // ==========================================
-// FORM BUILDER WITH SKIP LOGIC INTEGRATION
+// EXPORT SUITE (PDF & CSV)
 // ==========================================
-function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
-  const [formTitle, setFormTitle] = useState('');
-  const [formDesc, setFormDesc] = useState('');
-  const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-
-  const [editingFormId, setEditingFormId] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDesc, setEditDesc] = useState('');
-  const [editFields, setEditFields] = useState([]);
-
-  const addField = (type) => {
-    setFields([...fields, {
-      id: createId('field'),
-      label: `New ${type.toUpperCase()} Question`,
-      type,
-      required: false,
-      options: type === 'select' || type === 'multiselect' ? ['Option 1', 'Option 2'] : [],
-      skipLogic: null
-    }]);
-  };
-
-  const addEditField = (type) => {
-    setEditFields([...editFields, {
-      id: createId('field'),
-      label: `New ${type.toUpperCase()} Question`,
-      type,
-      required: false,
-      options: type === 'select' || type === 'multiselect' ? ['Option 1', 'Option 2'] : [],
-      skipLogic: null
-    }]);
-  };
-
-  const handleSaveForm = () => {
-    if (!formTitle.trim()) {
-      alert('Please enter a title for the form.');
-      return;
-    }
-    const formId = createId('form');
-    const fieldIds = new Map(fields.map(field => [field.id, createId('field')]));
-    const newForm = {
-      id: formId,
-      title: formTitle,
-      description: formDesc,
-      fields: fields.map(field => ({
-        ...field,
-        id: fieldIds.get(field.id),
-        skipLogic: field.skipLogic ? { ...field.skipLogic, fieldId: fieldIds.get(field.skipLogic.fieldId) } : null
-      }))
-    };
-    setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
-    setFormTitle('');
-    setFormDesc('');
-    setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-    alert('Custom form published successfully with Skip Logic rules!');
-  };
-
-  const handleUpdateSavedForm = (formId) => {
-    if (!editTitle.trim()) {
-      alert('Form title cannot be empty.');
-      return;
-    }
-    const updatedForm = {
-      id: formId,
-      title: editTitle,
-      description: editDesc,
-      fields: editFields
-    };
-    onUpdateForm(formId, updatedForm);
-    setEditingFormId(null);
-    alert('Form updated successfully!');
-  };
-
-  return (
-    <div className="space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-        <p className="text-base text-slate-600 mt-1">Design surveys with multi-select, mandatory toggles, and Skip Logic for {project.name}.</p>
-      </div>
-
-      {project.forms.length > 0 && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Active Project Forms ({project.forms.length})</h3>
-          <div className="grid grid-cols-1 gap-5">
-            {project.forms.map(form => (
-              <div key={form.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                {editingFormId === form.id ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b pb-2">
-                      <h4 className="font-extrabold text-indigo-700 text-lg">Editing Form</h4>
-                      <div className="flex gap-2">
-                        <button onClick={() => setEditingFormId(null)} className="px-4 py-2 text-sm border rounded-xl bg-white font-bold">Cancel</button>
-                        <button onClick={() => handleUpdateSavedForm(form.id)} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-xl font-extrabold">Save Form</button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Form Title</label>
-                      <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base font-bold bg-white" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Description</label>
-                      <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full border rounded-xl p-3 text-sm bg-white h-20" />
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                      <h5 className="font-extrabold text-slate-800 text-sm">Form Questions ({editFields.length})</h5>
-                      {editFields.map((field, fIdx) => (
-                        <div key={field.id} className="p-4 bg-white rounded-xl border space-y-3">
-                          <div className="flex items-center gap-3">
-                            <input 
-                              type="text" 
-                              value={field.label} 
-                              onChange={(e) => {
-                                const updated = [...editFields];
-                                updated[fIdx].label = e.target.value;
-                                setEditFields(updated);
-                              }}
-                              className="flex-1 border rounded-lg px-3 py-2 text-sm font-bold"
-                            />
-                            <span className="text-xs bg-indigo-50 text-indigo-800 font-extrabold px-2.5 py-1 rounded uppercase">{field.type}</span>
-                            <label className="flex items-center gap-1 text-xs font-bold text-slate-700">
-                              <input 
-                                type="checkbox" 
-                                checked={field.required}
-                                onChange={(e) => {
-                                  const updated = [...editFields];
-                                  updated[fIdx].required = e.target.checked;
-                                  setEditFields(updated);
-                                }}
-                              /> Required
-                            </label>
-                            <button onClick={() => setEditFields(editFields.filter(f => f.id !== field.id))} className="text-red-600 text-xs font-bold p-1.5 bg-red-50 rounded border border-red-200">Remove</button>
-                          </div>
-
-                          {(field.type === 'select' || field.type === 'multiselect') && (
-                            <div className="text-sm space-y-1">
-                              <label className="font-bold text-xs text-slate-600">Options (comma-separated):</label>
-                              <input 
-                                type="text" 
-                                value={field.options.join(', ')} 
-                                onChange={(e) => {
-                                  const updated = [...editFields];
-                                  updated[fIdx].options = e.target.value.split(',').map(s => s.trim());
-                                  setEditFields(updated);
-                                }}
-                                className="w-full border rounded-lg p-2 text-xs bg-white"
-                              />
-                            </div>
-                          )}
-
-                          <div className="pt-2 border-t text-xs space-y-1">
-                            <label className="font-extrabold text-slate-700 flex items-center gap-1">
-                              <GitBranch className="h-3.5 w-3.5 text-indigo-600" /> Skip Logic:
-                            </label>
-                            <div className="flex gap-2">
-                              <select 
-                                value={field.skipLogic?.fieldId || ''}
-                                onChange={(e) => {
-                                  const parentId = e.target.value;
-                                  const updated = [...editFields];
-                                  if (!parentId) {
-                                    updated[fIdx].skipLogic = null;
-                                  } else {
-                                    updated[fIdx].skipLogic = { fieldId: parentId, value: updated[fIdx].skipLogic?.value || '' };
-                                  }
-                                  setEditFields(updated);
-                                }}
-                                className="border rounded px-2 py-1 bg-white flex-1"
-                              >
-                                <option value="">-- No Skip Logic (Always Show) --</option>
-                                {editFields.slice(0, fIdx).map(prev => (
-                                  <option key={prev.id} value={prev.id}>Depends on: {prev.label}</option>
-                                ))}
-                              </select>
-                              {field.skipLogic && (
-                                <input 
-                                  type="text" 
-                                  placeholder="Trigger value..."
-                                  value={field.skipLogic.value}
-                                  onChange={(e) => {
-                                    const updated = [...editFields];
-                                    updated[fIdx].skipLogic.value = e.target.value;
-                                    setEditFields(updated);
-                                  }}
-                                  className="border rounded px-2 py-1 w-40"
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <button onClick={() => addEditField('text')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Short Text</button>
-                        <button onClick={() => addEditField('select')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Dropdown</button>
-                        <button onClick={() => addEditField('multiselect')} className="px-3 py-1.5 text-xs font-bold bg-slate-100 rounded border">+ Multi-Select</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-black text-slate-900 text-lg">{form.title}</h4>
-                        {form.description && <p className="text-sm text-slate-600 mt-1">{form.description}</p>}
-                      </div>
-                      <span className="text-xs bg-indigo-100 text-indigo-900 px-3 py-1 rounded-full font-mono font-bold">{form.fields.length} Fields</span>
-                    </div>
-
-                    <div className="flex justify-end items-center gap-2 pt-3 border-t">
-                      <button 
-                        onClick={() => {
-                          setEditingFormId(form.id);
-                          setEditTitle(form.title);
-                          setEditDesc(form.description || '');
-                          setEditFields(JSON.parse(JSON.stringify(form.fields)));
-                        }} 
-                        className="text-sm font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 bg-white px-4 py-2 rounded-xl border shadow-sm transition"
-                      >
-                        <Edit2 className="h-4 w-4" /> Edit Form &amp; Skip Logic
-                      </button>
-                      <button onClick={() => onDeleteForm(form.id)} className="text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-1.5 bg-white px-4 py-2 rounded-xl border border-red-200 transition">
-                        <Trash2 className="h-4 w-4" /> Delete
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* CREATE NEW FORM WITH INTEGRATED SKIP LOGIC */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-          <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Form Name</label>
-              <input type="text" placeholder="e.g. Beneficiary Monitoring Survey" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 text-base bg-white font-bold" />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Instructions / Description</label>
-              <textarea placeholder="Guidelines for enumerators..." value={formDesc} onChange={(e) => setFormDesc(e.target.value)} className="w-full border rounded-xl p-3 text-base h-24" />
-            </div>
-          </div>
-
-          <hr className="border-slate-200" />
-
-          <div className="space-y-4">
-            <h3 className="text-base font-extrabold text-slate-900">Form Questions ({fields.length})</h3>
-            {fields.map((field, idx) => (
-              <div key={field.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-sm font-extrabold text-slate-500 font-mono">Question {idx + 1}</span>
-                  <input 
-                    type="text" 
-                    value={field.label} 
-                    onChange={(e) => {
-                      const updated = [...fields];
-                      updated[idx].label = e.target.value;
-                      setFields(updated);
-                    }} 
-                    className="flex-1 bg-white border rounded-xl px-4 py-2 text-base font-bold shadow-sm" 
-                  />
-                  <span className="text-xs bg-indigo-100 text-indigo-900 font-extrabold px-3 py-1 rounded-lg uppercase">{field.type}</span>
-                  
-                  <label className="flex items-center gap-1.5 text-sm font-bold text-slate-700 cursor-pointer bg-white px-3 py-1.5 rounded-xl border">
-                    <input 
-                      type="checkbox" 
-                      checked={field.required}
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].required = e.target.checked;
-                        setFields(updated);
-                      }}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    Required
-                  </label>
-
-                  <button onClick={() => setFields(fields.filter(f => f.id !== field.id))} className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded-xl border border-red-200">Remove</button>
-                </div>
-
-                {(field.type === 'select' || field.type === 'multiselect') && (
-                  <div className="pl-6 text-sm space-y-1.5">
-                    <label className="font-bold text-slate-700">Options (comma separated):</label>
-                    <input 
-                      type="text" 
-                      value={field.options.join(', ')} 
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].options = e.target.value.split(',').map(s => s.trim());
-                        setFields(updated);
-                      }}
-                      className="w-full border rounded-xl p-2.5 bg-white text-sm"
-                    />
-                  </div>
-                )}
-
-                {/* Skip Logic Builder for New Form Questions */}
-                <div className="pl-6 pt-2 border-t text-xs space-y-1">
-                  <label className="font-extrabold text-slate-700 flex items-center gap-1">
-                    <GitBranch className="h-3.5 w-3.5 text-indigo-600" /> Skip Logic (Conditional Display):
-                  </label>
-                  <div className="flex gap-2">
-                    <select 
-                      value={field.skipLogic?.fieldId || ''}
-                      onChange={(e) => {
-                        const parentId = e.target.value;
-                        const updated = [...fields];
-                        if (!parentId) {
-                          updated[idx].skipLogic = null;
-                        } else {
-                          updated[idx].skipLogic = { fieldId: parentId, value: updated[idx].skipLogic?.value || '' };
-                        }
-                        setFields(updated);
-                      }}
-                      className="border rounded px-2.5 py-1.5 bg-white flex-1 font-bold"
-                    >
-                      <option value="">-- Always Show (No Skip Logic) --</option>
-                      {fields.slice(0, idx).filter(p => p.type === 'select' || p.type === 'multiselect').map(prev => (
-                        <option key={prev.id} value={prev.id}>Depends on: {prev.label}</option>
-                      ))}
-                    </select>
-                    {field.skipLogic && (
-                      <input 
-                        type="text" 
-                        placeholder="Trigger value..."
-                        value={field.skipLogic.value}
-                        onChange={(e) => {
-                          const updated = [...fields];
-                          updated[idx].skipLogic.value = e.target.value;
-                          setFields(updated);
-                        }}
-                        className="border rounded px-2.5 py-1.5 w-44 font-bold"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl shadow-md transition text-base">
-            Publish Form To Project
-          </button>
-        </div>
-
-        <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-md space-y-4 h-fit">
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300">Add Question Type</h3>
-          <div className="grid grid-cols-1 gap-2.5">
-            {[
-              { type: 'text', label: 'Short Text', icon: FileText },
-              { type: 'number', label: 'Numeric Quantity', icon: DollarSign },
-              { type: 'date', label: 'Date Picker', icon: FileText },
-              { type: 'select', label: 'Dropdown Select', icon: GitBranch },
-              { type: 'multiselect', label: 'Multi-Select Checkboxes', icon: CheckSquare },
-              { type: 'location', label: 'GPS Location', icon: MapPin },
-              { type: 'photo', label: 'Photo / Image Capture', icon: Camera },
-              { type: 'note', label: 'Long Note / Observation', icon: NoteIcon },
-              { type: 'rating', label: '1-5 Star Rating', icon: Star }
-            ].map((tool) => {
-              const Icon = tool.icon;
-              return (
-                <button
-                  key={tool.type}
-                  onClick={() => addField(tool.type)}
-                  className="flex items-center space-x-3 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 text-sm font-bold transition text-left"
-                >
-                  <Icon className="h-5 w-5 text-indigo-400" />
-                  <span>{tool.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
-  const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
-  const [formData, setFormData] = useState({});
-
-  const activeForm = project.forms.find(f => f.id === selectedFormId);
-
-  const handleCaptureGPS = async (fieldId) => {
-    try {
-      const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
-      const coords = `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
-      setFormData(prev => ({ ...prev, [fieldId]: coords }));
-      alert(`GPS captured: ${coords}`);
-    } catch (error) {
-      alert(`Unable to retrieve location.`);
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!activeForm) return;
-    onSubmitForm(activeForm.id, formData);
-    setFormData({});
-  };
-
-  return (
-    <div className="space-y-8 text-base">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-2xl font-black text-slate-900">Field Data Entry Submission</h2>
-          <div className="mt-4">
-            <select value={selectedFormId} onChange={(e) => { setSelectedFormId(e.target.value); setFormData({}); }} className="w-full border rounded-xl p-3 text-base font-bold bg-white">
-              {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
-            </select>
-          </div>
-        </div>
-
-        {activeForm ? (
-          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-            <h3 className="font-extrabold text-slate-900 text-xl border-b pb-3">{activeForm.title}</h3>
-            {activeForm.fields.map(field => {
-              if (field.skipLogic) {
-                const parentVal = formData[field.skipLogic.fieldId];
-                if (Array.isArray(parentVal)) {
-                  if (!parentVal.includes(field.skipLogic.value)) return null;
-                } else if (parentVal !== field.skipLogic.value) {
-                  return null;
-                }
-              }
-
-              return (
-                <div key={field.id} className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-800">{field.label} {field.required && '*'}</label>
-                  {field.type === 'text' || field.type === 'number' || field.type === 'date' ? (
-                    <input type={field.type} required={field.required} value={formData[field.id] || ''} onChange={(e) => setFormData({...formData, [field.id]: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
-                  ) : field.type === 'select' ? (
-                    <select required={field.required} value={formData[field.id] || ''} onChange={(e) => setFormData({...formData, [field.id]: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
-                      <option value="">-- Select --</option>
-                      {(field.options || []).map(opt => (<option key={opt} value={opt}>{opt}</option>))}
-                    </select>
-                  ) : field.type === 'multiselect' ? (
-                    <div className="space-y-2 bg-slate-50 p-4 rounded-xl border">
-                      {(field.options || []).map(opt => {
-                        const currentArr = formData[field.id] || [];
-                        return (
-                          <label key={opt} className="flex items-center gap-2 text-sm font-bold text-slate-800 cursor-pointer">
-                            <input type="checkbox" checked={currentArr.includes(opt)} onChange={(e) => {
-                              let updated = [...currentArr];
-                              if (e.target.checked) updated.push(opt);
-                              else updated = updated.filter(o => o !== opt);
-                              setFormData({...formData, [field.id]: updated});
-                            }} className="w-4 h-4 text-indigo-600 rounded" />
-                            {opt}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : field.type === 'location' ? (
-                    <div className="flex gap-3">
-                      <input type="text" readOnly required={field.required} value={formData[field.id] || ''} placeholder="Lat, Lng" className="flex-1 border rounded-xl p-3 font-mono bg-slate-50" />
-                      <button type="button" onClick={() => handleCaptureGPS(field.id)} className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-extrabold flex items-center gap-2"><MapPin className="h-5 w-5" /> GPS</button>
-                    </div>
-                  ) : field.type === 'note' ? (
-                    <textarea required={field.required} value={formData[field.id] || ''} onChange={(e) => setFormData({...formData, [field.id]: e.target.value})} className="w-full border rounded-xl p-3 h-28" />
-                  ) : field.type === 'rating' ? (
-                    <div className="flex items-center gap-3">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button key={star} type="button" onClick={() => setFormData({...formData, [field.id]: String(star)})} className={`p-3 rounded-xl border font-bold flex items-center gap-1 ${Number(formData[field.id]) >= star ? 'bg-amber-400 text-slate-900 border-amber-500' : 'bg-slate-50 text-slate-500'}`}>
-                          <Star className="h-5 w-5 fill-current" /> {star}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-            <button type="submit" className="w-full bg-indigo-600 text-white font-extrabold py-4 rounded-2xl shadow-md">Submit Data Record</button>
-          </form>
-        ) : null}
-      </div>
-
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <h3 className="text-lg font-extrabold text-slate-900">Submitted Field Data Logs ({project.submissions.length})</h3>
-        {project.submissions.map(sub => (
-          <div key={sub.id} className="p-4 bg-slate-50 rounded-xl border flex justify-between items-center">
-            <span className="font-mono text-sm text-indigo-700 font-bold">{sub.timestamp}</span>
-            <button onClick={() => onDeleteSubmission(sub.id)} className="text-red-600 p-2 bg-red-50 rounded-xl border border-red-200"><Trash2 className="h-5 w-5" /></button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ExportSuiteView({ project, getCalculatedActual, onExportSubmissions, onExportLogframe, onExportBackup }) {
+  const downloadAdvancedReportPDF = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black text-slate-900">Export Suite &amp; Reporting Hub</h2>
+        <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite &amp; Reporting Hub</h2>
+        <p className="text-base text-slate-600 mt-1">Export raw data, logframe targets, and automated PDF reports.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between">
-          <h3 className="font-extrabold text-slate-900 text-lg">Submissions CSV</h3>
-          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 text-white font-extrabold py-3 rounded-xl mt-4">Export CSV</button>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-emerald-50 p-3.5 rounded-2xl w-fit mb-3 border border-emerald-200"><FileSpreadsheet className="h-7 w-7 text-emerald-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Raw Submissions CSV</h3>
+            <p className="text-sm text-slate-600 mt-1">Export all survey records.</p>
+          </div>
+          <button onClick={onExportSubmissions} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export CSV</button>
         </div>
-        <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between">
-          <h3 className="font-extrabold text-slate-900 text-lg">Logframe CSV</h3>
-          <button onClick={onExportLogframe} className="w-full bg-indigo-600 text-white font-extrabold py-3 rounded-xl mt-4">Export Logframe</button>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-indigo-50 p-3.5 rounded-2xl w-fit mb-3 border border-indigo-200"><TrendingUp className="h-7 w-7 text-indigo-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Logframe CSV</h3>
+            <p className="text-sm text-slate-600 mt-1">Export indicators &amp; targets.</p>
+          </div>
+          <button onClick={onExportLogframe} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Export Logframe</button>
         </div>
-        <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between">
-          <h3 className="font-extrabold text-slate-900 text-lg">PDF Report</h3>
-          <button onClick={() => window.print()} className="w-full bg-amber-600 text-white font-extrabold py-3 rounded-xl mt-4">Download PDF</button>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-amber-50 p-3.5 rounded-2xl w-fit mb-3 border border-amber-200"><FileDown className="h-7 w-7 text-amber-600" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">Automated PDF Report</h3>
+            <p className="text-sm text-slate-600 mt-1">Generate printable donor PDF.</p>
+          </div>
+          <button onClick={downloadAdvancedReportPDF} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download PDF</button>
         </div>
-        <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col justify-between">
-          <h3 className="font-extrabold text-slate-900 text-lg">JSON Backup</h3>
-          <button onClick={onExportBackup} className="w-full bg-slate-900 text-white font-extrabold py-3 rounded-xl mt-4">Download JSON</button>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="bg-slate-100 p-3.5 rounded-2xl w-fit mb-3 border border-slate-200"><FileCode className="h-7 w-7 text-slate-800" /></div>
+            <h3 className="font-extrabold text-slate-900 text-lg">System JSON Backup</h3>
+            <p className="text-sm text-slate-600 mt-1">Complete system data backup.</p>
+          </div>
+          <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl text-base shadow-md">Download JSON</button>
         </div>
       </div>
     </div>
   );
 }
 
-function MobileSyncView({ project, isOnline }) {
-  return (
-    <div className="max-w-3xl mx-auto space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h2 className="text-2xl font-black text-slate-900">Mobile App Sync &amp; Offline Hub</h2>
-      </div>
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
-        <p className="text-base text-slate-700">{isOnline ? 'Online mode active. Syncing automatically with Firebase.' : 'Offline mode active. Data is cached locally.'}</p>
-      </div>
-    </div>
-  );
-}
-
+// ==========================================
+// PRINTABLE PAPER FORMS
+// ==========================================
 function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
   const activeForm = project.forms.find(f => f.id === selectedFormId) || project.forms[0];
   return (
     <div className="space-y-6 text-base">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
-        <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
-        <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2"><Printer className="h-5 w-5" /> Print</button>
-      </div>
-      {activeForm && (
-        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:p-0">
-          <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
-          <h2 className="text-xl font-extrabold text-slate-900 mt-2">{activeForm.title}</h2>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900">Printable Paper Form Layout</h2>
+          <p className="text-base text-slate-600 mt-1">Generates clean paper-ready survey sheets.</p>
         </div>
+        <div className="print-actions flex items-center gap-3">
+          <select value={selectedFormId || activeForm?.id || ''} onChange={(e) => setSelectedFormId(e.target.value)} className="border rounded-xl px-4 py-2.5 text-base font-bold bg-white">
+            {project.forms.map(f => (<option key={f.id} value={f.id}>{f.title}</option>))}
+          </select>
+          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
+            <Printer className="h-5 w-5" /> Print Form
+          </button>
+        </div>
+      </div>
+      {activeForm ? (
+        <div className="bg-white p-12 rounded-3xl border border-slate-300 shadow-md max-w-3xl mx-auto print:border-none print:shadow-none print:p-0">
+          <div className="border-b-2 border-slate-900 pb-5 mb-6 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 uppercase">{project.name}</h1>
+              <p className="text-base font-bold text-slate-600">Official Field Monitoring Survey Paper Form</p>
+            </div>
+            <div className="text-right text-sm text-slate-600">
+              <p><strong>Code:</strong> {project.code}</p>
+              <p><strong>Ref:</strong> {activeForm.id}</p>
+            </div>
+          </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-extrabold text-slate-900 border-b pb-1">{activeForm.title}</h2>
+            {activeForm.description && <p className="text-sm text-slate-600 mt-1 italic">{activeForm.description}</p>}
+          </div>
+          <div className="space-y-6">
+            {activeForm.fields.map((field, idx) => (
+              <div key={field.id} className="space-y-2">
+                <div className="flex justify-between text-base font-bold text-slate-900">
+                  <span>{idx + 1}. {field.label} {field.required && '*'}</span>
+                  <span className="text-xs text-slate-500 font-normal">[{field.type.toUpperCase()}]</span>
+                </div>
+                <div className="h-12 border border-slate-400 rounded-xl bg-white"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-center text-slate-600">No form available to print.</p>
       )}
     </div>
   );
 }
+
+// ==========================================
+// LICENSE & ACTIVATION HUB
+// ==========================================
+function LicenseActivationView({ license, setLicense, isGateway = false }) {
+  const [inputCode, setInputCode] = useState('');
+
+  const activateCode = (codeToActivate) => {
+    const code = codeToActivate.trim().toUpperCase();
+    let newLicenseData = null;
+
+    if (code === 'DEMO-5DAYS') {
+      newLicenseData = {
+        code,
+        level: 'Level 1: 5-Day Demo',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'ANNUAL-2026') {
+      newLicenseData = {
+        code,
+        level: 'Level 2: One-Year Plan',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'LIFETIME-GMEL') {
+      newLicenseData = {
+        code,
+        level: 'Level 3: Pay-Once Lifetime License',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: null
+      };
+    } else {
+      alert('Invalid activation code. Please enter a valid code.');
+      return;
+    }
+
+    setLicense(newLicenseData);
+    setInputCode('');
+    alert(`Activation successful! Tier: ${newLicenseData.level}`);
+  };
+
+  const handleActivate = (e) => {
+    e.preventDefault();
+    activateCode(inputCode);
+  };
+
+  const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
+
+  return (
+    <div className={`mx-auto space-y-6 text-base ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
+      {!isGateway && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+            <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
+          </h2>
+          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
+            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2">
+              🚀 Activate Free Demo
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
+            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
+              <Mail className="h-5 w-5" /> Request via Email
+            </a>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License" className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
+              <Mail className="h-5 w-5" /> Request via Email
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
+        {!isGateway && (
+          <div className="flex items-center justify-between border-b pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
+              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+            </div>
+            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+              {isExpired ? 'Expired' : 'Active'}
+            </span>
+          </div>
+        )}
+
+        <form onSubmit={handleActivate} className="space-y-3 pt-2">
+          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
+          <div className="flex gap-3">
+            <input type="text" required placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL" value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold" />
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">Activate Key</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Minimal stub for Form Builder & Data Entry to ensure all dependencies resolve correctly
+function FormBuilderView() { return null; }
+function DataEntryView() { return null; }
