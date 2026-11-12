@@ -107,10 +107,14 @@ const initialProjects = [
         ]
       }
     ],
-    submissions: []
+    submissions: [],
+    // ADDED: Real financial expenditure logs
+    expenses: [
+      { id: 'exp-1', title: 'Community Mobilization Workshop', amount: 4500, date: '2026-06-12' },
+      { id: 'exp-2', title: 'Borehole Hardware Procurement', amount: 8200, date: '2026-07-01' }
+    ]
   }
 ];
-
 export default function App() {
   const [projects, setProjects] = useState(initialProjects);
   const [license, setLicense] = useState({
@@ -818,7 +822,10 @@ function UserGuidelinesView() {
   );
 }
 
-function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
+function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) {
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [newExp, setNewExp] = useState({ title: '', amount: '', date: '' });
+
   const levels = [
     { name: 'Impact', color: '#b7791f' },
     { name: 'Outcome', color: '#5265d8' },
@@ -857,10 +864,28 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
     healthColor = 'bg-indigo-100 text-indigo-900 border-indigo-300';
   }
 
-  // Parse budget number safely
-  const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 0;
-  // Estimate expenditure ratio based on submissions / indicators activity
-  const utilizationRate = Math.min(100, Math.round((project.submissions.length / (totalIndicators * 5 || 1)) * 100));
+  // Parse total budget and actual expenses
+  const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 1;
+  const projectExpenses = project.expenses || [];
+  const totalSpent = projectExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const utilizationRate = Math.min(100, Math.round((totalSpent / rawBudgetNum) * 100));
+
+  const handleAddExpense = (e) => {
+    e.preventDefault();
+    if (!newExp.title.trim() || !newExp.amount) return;
+    const expenseObj = {
+      id: createId('exp'),
+      title: newExp.title,
+      amount: parseFloat(newExp.amount) || 0,
+      date: newExp.date || new Date().toISOString().split('T')[0]
+    };
+    setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+      ...p,
+      expenses: [...(p.expenses || []), expenseObj]
+    }));
+    setNewExp({ title: '', amount: '', date: '' });
+    setShowExpenseModal(false);
+  };
 
   return (
     <div className="space-y-6 text-base">
@@ -963,19 +988,31 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
         </div>
 
         <div className="space-y-6">
-          {/* NEW: Financial Budget Utilization Ratio Card */}
+          {/* REAL FINANCIAL BUDGET UTILIZATION CARD */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-              <DollarSign className="h-6 w-6 text-emerald-600" /> Budget Utilization Ratio
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm font-bold">
-                <span className="text-slate-600">Allocated Budget:</span>
-                <span className="text-slate-900">{project.budget || '$0'}</span>
+            <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <DollarSign className="h-6 w-6 text-emerald-600" /> Budget Utilization
+              </h3>
+              <button 
+                onClick={() => setShowExpenseModal(true)} 
+                className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold px-3 py-1.5 rounded-lg hover:bg-emerald-100"
+              >
+                + Add Expense
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-600">Total Budget:</span>
+                <span className="text-slate-900">{project.budget}</span>
               </div>
-              <div className="flex justify-between text-sm font-bold">
-                <span className="text-slate-600">Estimated Execution:</span>
-                <span className="text-emerald-700">{utilizationRate}%</span>
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-600">Total Expended:</span>
+                <span className="text-emerald-700">${totalSpent.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between font-bold text-xs text-slate-500">
+                <span>Utilization Rate:</span>
+                <span>{utilizationRate}%</span>
               </div>
               <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden border">
                 <div className="bg-emerald-600 h-3 rounded-full transition-all" style={{ width: `${utilizationRate}%` }}></div>
@@ -1009,6 +1046,38 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
           </div>
         </div>
       </div>
+
+      {/* Add Expense Modal */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="text-xl font-extrabold text-slate-900">Record Project Expense</h3>
+              <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 font-bold text-lg">✕</button>
+            </div>
+            <form onSubmit={handleAddExpense} className="space-y-4 text-base">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">Expense Title / Item *</label>
+                <input type="text" required placeholder="e.g. Field Enumerator Transport" value={newExp.title} onChange={(e) => setNewExp({...newExp, title: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Amount ($) *</label>
+                  <input type="number" required placeholder="1200" value={newExp.amount} onChange={(e) => setNewExp({...newExp, amount: e.target.value})} className="w-full border rounded-xl p-3 font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Date</label>
+                  <input type="date" value={newExp.date} onChange={(e) => setNewExp({...newExp, date: e.target.value})} className="w-full border rounded-xl p-3 text-sm font-bold" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button type="button" onClick={() => setShowExpenseModal(false)} className="px-4 py-2.5 border rounded-xl font-bold">Cancel</button>
+                <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white font-extrabold rounded-xl">Save Expense</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
