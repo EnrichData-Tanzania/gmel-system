@@ -121,8 +121,7 @@ export default function App() {
     expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
   });
   
-  // New System States: RBAC & Offline Status
-  const [userRole, setUserRole] = useState('Administrator'); // 'Administrator', 'M&E Officer', 'Enumerator'
+  const [userRole, setUserRole] = useState('Administrator');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
@@ -131,7 +130,6 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
-  // Network listener for offline-first caching
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -147,7 +145,6 @@ export default function App() {
     async function fetchCloudData() {
       try {
         if (!db || !navigator.onLine) {
-          // Fallback to local storage if offline
           const localCache = localStorage.getItem('gmel_offline_cache');
           if (localCache) {
             const parsed = JSON.parse(localCache);
@@ -174,13 +171,9 @@ export default function App() {
     fetchCloudData();
   }, []);
 
-  // Save to Firebase and local storage cache
   useEffect(() => {
     if (!isLoadedFromCloud) return;
-
-    // Always update local storage cache for offline resilience
     localStorage.setItem('gmel_offline_cache', JSON.stringify({ projects, license }));
-
     if (!db || !isOnline) return;
 
     async function saveCloudData() {
@@ -265,13 +258,11 @@ export default function App() {
           </div>
 
           <div className="project-toolbar flex items-center space-x-3 sm:space-x-4">
-            {/* Online / Offline Indicator Badge */}
             <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${isOnline ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-amber-950 text-amber-300 border-amber-800'}`}>
               {isOnline ? <Wifi className="h-4 w-4 text-emerald-400" /> : <WifiOff className="h-4 w-4 text-amber-400" />}
               <span>{isOnline ? 'Online (Synced)' : 'Offline (Cached)'}</span>
             </div>
 
-            {/* RBAC Selector */}
             <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
               <Shield className="h-4 w-4 text-indigo-400" />
               <select 
@@ -662,7 +653,6 @@ export default function App() {
   );
 }
 
-// Helper to compute disaggregated actual values based on linked form fields
 function getCalculatedActual(project, ind) {
   const defaultVal = { general: 0, male: 0, female: 0, total: 0 };
   if (!ind.mappedFieldId) return ind.baseline || defaultVal;
@@ -708,14 +698,10 @@ function exportCSV(dataArray, filename) {
   document.body.removeChild(link);
 }
 
-// ==========================================
-// GIS MAP VIEW (Leaflet Integration)
-// ==========================================
 function GISMapView({ project }) {
   const mapRef = useRef(null);
 
   useEffect(() => {
-    // Extract GPS coordinates from submissions
     const gpsPoints = [];
     project.submissions.forEach(sub => {
       Object.entries(sub.data).forEach(([key, val]) => {
@@ -728,7 +714,6 @@ function GISMapView({ project }) {
       });
     });
 
-    // Check if Leaflet script is loaded, if not load it dynamically
     if (!window.L) {
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
@@ -751,7 +736,7 @@ function GISMapView({ project }) {
         mapRef.current.innerHTML = '';
       }
 
-      const defaultLat = points.length > 0 ? points[0].lat : -3.3869; // Default Tanzania / Arusha center
+      const defaultLat = points.length > 0 ? points[0].lat : -3.3869;
       const defaultLng = points.length > 0 ? points[0].lng : 36.6829;
 
       const map = window.L.map(mapRef.current).setView([defaultLat, defaultLng], 10);
@@ -786,7 +771,7 @@ function GISMapView({ project }) {
 
 function UserGuidelinesView() {
   const downloadPDFGuidelines = () => {
-    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n1. Header Quick Controls & Role-Based Access Control (RBAC)\n2. Dashboard & Visuals\n3. Logical Framework Matrix (Logframe) with Disaggregated General, Male, Female, and Total Metrics\n4. GIS Mapping Module & GPS Coordinate Tracking\n5. Custom Reports & Scorecard\n6. Advanced Form Builder (GPS, Photos, Ratings, Multi-Select, Skip Logic)\n7. Field Data Submission & Offline-First Caching\n8. Data Export Suite & Automated PDF Reports\n9. Mobile App Sync (Firebase Firestore)`;
+    const guidelineText = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: END-USER GUIDELINE\n\nFounder & M&E Specialist: Gabriel Godiel Mashambo\nQualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\nExperience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.`;
     const blob = new Blob([guidelineText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -825,22 +810,8 @@ function UserGuidelinesView() {
             <GraduationCap className="h-6 w-6 text-indigo-600" /> About the Founder &amp; System Background
           </h3>
           <p className="text-base text-slate-700">
-            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <em>Gabriel Monitoring, Evaluation and Learning System</em>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <a href="url?id=5" className="text-indigo-600 underline font-bold">GMEL System</a>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
-        </div>
-
-        <div className="space-y-4 pt-2">
-          <h3 className="font-extrabold text-lg text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
-          <p>Switch between <strong>Administrator</strong>, <strong>M&amp;E Officer</strong>, and <strong>Enumerator</strong> roles to restrict or grant permissions for creating projects, editing forms, or submitting survey records.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">2. Offline-First Caching &amp; Sync</h3>
-          <p>Operate seamlessly in remote field locations across Tanzania. The system automatically caches data locally and synchronizes with Firebase when connection is restored.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">3. GIS Mapping Module</h3>
-          <p>Visualize all field GPS data points geographically on an interactive Leaflet map to track project footprints and beneficiary distributions.</p>
-
-          <h3 className="font-extrabold text-lg text-indigo-700">4. Automated PDF Report Generation</h3>
-          <p>Export donor-ready PDF reports containing executive performance scorecards and logframe analyses instantly with a single click.</p>
         </div>
       </div>
     </div>
@@ -906,66 +877,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject }) {
             <h3 className="text-2xl font-black text-slate-900 mt-1">{project.submissions.length}</h3>
           </div>
           <Database className="h-10 w-10 text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-200 pb-3">
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-indigo-600" /> Indicator Target vs. Calculated Progress
-            </h3>
-          </div>
-          <div className="space-y-5 pt-2">
-            {project.indicators.map(ind => {
-              const actualObj = getCalculatedActual(project, ind);
-              const actualVal = actualObj.total || actualObj.general || 0;
-              const targetVal = (ind.target && typeof ind.target === 'object') ? (ind.target.total || ind.target.general || 1) : 1;
-              const baseVal = (ind.baseline && typeof ind.baseline === 'object') ? (ind.baseline.total || ind.baseline.general || 0) : 0;
-              const pct = Math.min(100, Math.max(0, Math.round(((actualVal - baseVal) / (targetVal - baseVal || 1)) * 100)));
-
-              return (
-                <div key={ind.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
-                  <div className="flex justify-between items-start text-sm font-bold">
-                    <span className="text-slate-900 text-base font-bold">{ind.title}</span>
-                    <span className="bg-indigo-100 text-indigo-900 font-mono px-3 py-1 rounded-lg border border-indigo-200 text-sm">
-                      {actualVal} / {targetVal} {ind.unit} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden flex border border-slate-300">
-                    <div className="bg-indigo-600 h-4 rounded-full transition-all duration-500" style={{ width: `${Math.max(0, pct)}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3">
-              <PieChart className="h-6 w-6 text-indigo-600" /> Indicator Level Breakdown
-            </h3>
-            <div className="py-6 flex justify-center">
-              <div className="w-36 h-36 rounded-full relative flex items-center justify-center shadow-inner" style={{ background: `conic-gradient(${chartSegments || '#e5e7eb 0% 100%'})` }}>
-                <div className="absolute w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center shadow">
-                  <strong className="text-xl font-black text-slate-900">{totalIndicators}</strong>
-                  <span className="text-xs uppercase font-extrabold text-slate-500">indicators</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2.5 text-sm">
-              {levels.map(({ name: lvl, color }) => {
-                const count = project.indicators.filter(i => i.level === lvl).length;
-                return (
-                  <div key={lvl} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <span className="font-bold text-slate-800 flex items-center gap-2.5"><span className="w-3.5 h-3.5 rounded-full inline-block" style={{ backgroundColor: color }} />{lvl} level</span>
-                    <span className="font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-300 font-extrabold">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1037,7 +948,6 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
     }));
     setEditingIndicatorId(null);
     setShowAddModal(false);
-    setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
   };
 
   const handleDeleteIndicator = (indicator) => {
@@ -1060,7 +970,7 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div>
           <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix</h2>
-          <p className="text-base text-slate-600 mt-1">Manage indicators with disaggregated demographic metrics (General, Male, Female, Total).</p>
+          <p className="text-base text-slate-600 mt-1">Manage indicators with fully disaggregated demographic metrics (General, Male, Female, Total).</p>
         </div>
         {userRole !== 'Enumerator' && (
           <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
@@ -1070,7 +980,7 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1050px]">
+        <table className="w-full text-left border-collapse min-w-[1100px]">
           <thead>
             <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b border-slate-200">
               <th className="p-4">Level</th>
@@ -1236,133 +1146,6 @@ function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   );
 }
 
-function LicenseActivationView({ license, setLicense, isGateway = false }) {
-  const [inputCode, setInputCode] = useState('');
-
-  const activateCode = (codeToActivate) => {
-    const code = codeToActivate.trim().toUpperCase();
-    let newLicenseData = null;
-
-    if (code === 'DEMO-5DAYS') {
-      newLicenseData = {
-        code,
-        level: 'Level 1: 5-Day Demo',
-        demoClaimed: true,
-        activatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-      };
-    } else if (code === 'ANNUAL-2026') {
-      newLicenseData = {
-        code,
-        level: 'Level 2: One-Year Plan',
-        demoClaimed: true,
-        activatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-      };
-    } else if (code === 'LIFETIME-GMEL') {
-      newLicenseData = {
-        code,
-        level: 'Level 3: Pay-Once Lifetime License',
-        demoClaimed: true,
-        activatedAt: new Date().toISOString(),
-        expiresAt: null
-      };
-    } else {
-      alert('Invalid activation code. Please enter a valid code.');
-      return;
-    }
-
-    setLicense(newLicenseData);
-    setInputCode('');
-    alert(`Activation successful! Tier: ${newLicenseData.level}`);
-  };
-
-  const handleActivate = (e) => {
-    e.preventDefault();
-    activateCode(inputCode);
-  };
-
-  const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
-  const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-
-  return (
-    <div className={`mx-auto space-y-6 text-base ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
-      {!isGateway && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-            <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
-          </h2>
-          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
-          <div>
-            <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
-            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
-          </div>
-          <div className="mt-5 pt-4 border-t">
-            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2">
-              🚀 Activate Free Demo
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
-          <div>
-            <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
-            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
-          </div>
-          <div className="mt-5 pt-4 border-t">
-            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
-              <Mail className="h-5 w-5" /> Request via Email
-            </a>
-          </div>
-        </div>
-
-        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
-          <div>
-            <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
-            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
-            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
-          </div>
-          <div className="mt-5 pt-4 border-t">
-            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License" className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
-              <Mail className="h-5 w-5" /> Request via Email
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
-        {!isGateway && (
-          <div className="flex items-center justify-between border-b pb-4">
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
-              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
-            </div>
-            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
-              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
-              {isExpired ? 'Expired' : 'Active'}
-            </span>
-          </div>
-        )}
-
-        <form onSubmit={handleActivate} className="space-y-3 pt-2">
-          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
-          <div className="flex gap-3">
-            <input type="text" required placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL" value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold" />
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">Activate Key</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 function CustomReportsView({ project, getCalculatedActual }) {
   const downloadPDFReport = () => {
     window.print();
@@ -1497,7 +1280,7 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
     setFormTitle('');
     setFormDesc('');
     setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-    alert('Custom form published successfully!');
+    alert('Custom form published successfully with Skip Logic rules!');
   };
 
   const handleUpdateSavedForm = (formId) => {
@@ -1520,7 +1303,7 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
     <div className="space-y-6 text-base">
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-        <p className="text-base text-slate-600 mt-1">Design surveys with GPS, Photos, Multi-Select Checkboxes, Mandatory toggles, and Skip Logic for {project.name}.</p>
+        <p className="text-base text-slate-600 mt-1">Design surveys with multi-select, mandatory toggles, and Skip Logic for {project.name}.</p>
       </div>
 
       {project.forms.length > 0 && (
@@ -1677,6 +1460,7 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
         </div>
       )}
 
+      {/* CREATE NEW FORM WITH INTEGRATED SKIP LOGIC */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
           <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
@@ -1743,6 +1527,47 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
                     />
                   </div>
                 )}
+
+                {/* Skip Logic Builder */}
+                <div className="pl-6 pt-2 border-t text-xs space-y-1">
+                  <label className="font-extrabold text-slate-700 flex items-center gap-1">
+                    <GitBranch className="h-3.5 w-3.5 text-indigo-600" /> Skip Logic (Conditional Display):
+                  </label>
+                  <div className="flex gap-2">
+                    <select 
+                      value={field.skipLogic?.fieldId || ''}
+                      onChange={(e) => {
+                        const parentId = e.target.value;
+                        const updated = [...fields];
+                        if (!parentId) {
+                          updated[idx].skipLogic = null;
+                        } else {
+                          updated[idx].skipLogic = { fieldId: parentId, value: updated[idx].skipLogic?.value || '' };
+                        }
+                        setFields(updated);
+                      }}
+                      className="border rounded px-2.5 py-1.5 bg-white flex-1 font-bold"
+                    >
+                      <option value="">-- Always Show (No Skip Logic) --</option>
+                      {fields.slice(0, idx).filter(p => p.type === 'select' || p.type === 'multiselect').map(prev => (
+                        <option key={prev.id} value={prev.id}>Depends on: {prev.label}</option>
+                      ))}
+                    </select>
+                    {field.skipLogic && (
+                      <input 
+                        type="text" 
+                        placeholder="Trigger value..."
+                        value={field.skipLogic.value}
+                        onChange={(e) => {
+                          const updated = [...fields];
+                          updated[idx].skipLogic.value = e.target.value;
+                          setFields(updated);
+                        }}
+                        className="border rounded px-2.5 py-1.5 w-44 font-bold"
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -2147,6 +1972,132 @@ function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
       ) : (
         <p className="text-center text-slate-600">No form available to print.</p>
       )}
+    </div>
+  );
+}
+
+function LicenseActivationView({ license, setLicense, isGateway = false }) {
+  const [inputCode, setInputCode] = useState('');
+
+  const activateCode = (codeToActivate) => {
+    const code = codeToActivate.trim().toUpperCase();
+    let newLicenseData = null;
+
+    if (code === 'DEMO-5DAYS') {
+      newLicenseData = {
+        code,
+        level: 'Level 1: 5-Day Demo',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'ANNUAL-2026') {
+      newLicenseData = {
+        code,
+        level: 'Level 2: One-Year Plan',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'LIFETIME-GMEL') {
+      newLicenseData = {
+        code,
+        level: 'Level 3: Pay-Once Lifetime License',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: null
+      };
+    } else {
+      alert('Invalid activation code. Please enter a valid code.');
+      return;
+    }
+
+    setLicense(newLicenseData);
+    setInputCode('');
+    alert(`Activation successful! Tier: ${newLicenseData.level}`);
+  };
+
+  const handleActivate = (e) => {
+    e.preventDefault();
+    activateCode(inputCode);
+  };
+
+  const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
+
+  return (
+    <div className={`mx-auto space-y-6 text-base ${isGateway ? 'max-w-xl text-slate-900' : 'max-w-3xl'}`}>
+      {!isGateway && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+            <KeyRound className="h-7 w-7 text-indigo-600" /> System License &amp; Activation
+          </h2>
+          <p className="text-base text-slate-600 mt-1">Manage your subscription tier and system activation keys.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-indigo-600 tracking-wider">Level 1</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">5-Day Demo</h3>
+            <p className="text-sm text-slate-600 mt-2">Trial code for testing features.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <button onClick={() => activateCode('DEMO-5DAYS')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2">
+              🚀 Activate Free Demo
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-emerald-600 tracking-wider">Level 2</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">One-Year Plan</h3>
+            <p className="text-sm text-slate-600 mt-2">Full access for 365 days.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20One-Year%20Plan" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
+              <Mail className="h-5 w-5" /> Request via Email
+            </a>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border shadow-sm bg-white border-slate-200 text-slate-900 flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-black uppercase text-amber-600 tracking-wider">Level 3</span>
+            <h3 className="text-lg font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+            <p className="text-sm text-slate-600 mt-2">Permanent license, never expires.</p>
+          </div>
+          <div className="mt-5 pt-4 border-t">
+            <a href="mailto:info.enrichdata@gmail.com?subject=Payment%20Confirmation%20Request%20-%20Lifetime%20License" className="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-extrabold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 text-center">
+              <Mail className="h-5 w-5" /> Request via Email
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className={`p-8 rounded-3xl shadow-sm border space-y-6 ${isGateway ? 'bg-white text-slate-900' : 'bg-white border-slate-200'}`}>
+        {!isGateway && (
+          <div className="flex items-center justify-between border-b pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-lg">Current Active License Status</h3>
+              <p className="text-sm text-slate-600 mt-1">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+            </div>
+            <span className={`px-4 py-1.5 rounded-full text-sm font-extrabold flex items-center gap-2 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {isExpired ? <AlertTriangle className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+              {isExpired ? 'Expired' : 'Active'}
+            </span>
+          </div>
+        )}
+
+        <form onSubmit={handleActivate} className="space-y-3 pt-2">
+          <label className="block text-sm font-bold text-slate-800">Have an Activation Code? Enter it here:</label>
+          <div className="flex gap-3">
+            <input type="text" required placeholder="e.g. ANNUAL-2026 or LIFETIME-GMEL" value={inputCode} onChange={(e) => setInputCode(e.target.value)} className="flex-1 border rounded-xl p-3 text-base font-mono bg-white uppercase shadow-sm text-slate-900 font-bold" />
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-6 py-3 rounded-xl text-base shadow">Activate Key</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
