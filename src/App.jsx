@@ -27,7 +27,10 @@ import {
   FileText as NoteIcon,
   GitBranch,
   MoreHorizontal,
-  CheckCircle2
+  CheckCircle2,
+  KeyRound,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 
 // ==========================================
@@ -53,7 +56,7 @@ const isFieldVisible = (field, formData) => (
   || String(formData[field.skipLogic.fieldId] ?? '') === String(field.skipLogic.value ?? '')
 );
 
-// Default Initial M&E Projects (Fallback if cloud is empty)
+// Default Initial M&E Projects
 const initialProjects = [
   {
     id: 'proj-1',
@@ -84,6 +87,13 @@ const initialProjects = [
 
 export default function App() {
   const [projects, setProjects] = useState(initialProjects);
+  const [license, setLicense] = useState({
+    code: 'DEMO-5DAYS',
+    level: 'Level 1: 5-Day Demo',
+    demoClaimed: true,
+    activatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+  });
   const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
 
   const [activeProjectId, setActiveProjectId] = useState('proj-1');
@@ -91,15 +101,17 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
-  // 1. Fetch live data from Firebase Firestore on app load
+  // 1. Fetch live data & license from Firebase Firestore on app load
   useEffect(() => {
     async function fetchCloudData() {
       try {
         const docRef = doc(db, 'gmel_systems', 'main_workspace');
         const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists() && docSnap.data().projects) {
-          setProjects(docSnap.data().projects);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.projects) setProjects(data.projects);
+          if (data.license) setLicense(data.license);
         }
       } catch (err) {
         console.error('Error loading from Firebase, using defaults:', err);
@@ -110,20 +122,20 @@ export default function App() {
     fetchCloudData();
   }, []);
 
-  // 2. Sync state changes to Firebase Firestore automatically
+  // 2. Sync state changes & license to Firebase Firestore automatically
   useEffect(() => {
     if (!isLoadedFromCloud) return;
 
     async function saveCloudData() {
       try {
         const docRef = doc(db, 'gmel_systems', 'main_workspace');
-        await setDoc(docRef, { projects, updated_at: new Date() });
+        await setDoc(docRef, { projects, license, updated_at: new Date() });
       } catch (err) {
         console.error('Error saving to Firebase:', err);
       }
     }
     saveCloudData();
-  }, [projects, isLoadedFromCloud]);
+  }, [projects, license, isLoadedFromCloud]);
 
   useEffect(() => {
     const handleInstallAvailable = (event) => {
@@ -458,6 +470,7 @@ export default function App() {
               { id: 'entry', label: 'Data Submission', icon: ListCheck },
               { id: 'export', label: 'Export Suite', icon: Download },
               { id: 'mobile', label: 'Mobile App Sync', icon: Smartphone },
+              { id: 'license', label: 'License & Activation', icon: KeyRound },
               { id: 'print', label: 'Print Forms', icon: Printer }
             ].map(tab => {
               const Icon = tab.icon;
@@ -489,6 +502,7 @@ export default function App() {
         {activeTab === 'entry' && <DataEntryView project={currentProject} onSubmitForm={handleFormSubmit} onDeleteSubmission={handleDeleteSubmission} onClearAllSubmissions={handleClearAllSubmissions} />}
         {activeTab === 'export' && <ExportSuiteView onExportSubmissions={exportSubmissionsCSV} onExportLogframe={exportLogframeCSV} onExportBackup={exportSystemJSON} />}
         {activeTab === 'mobile' && <MobileSyncView project={currentProject} />}
+        {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
         {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
       </main>
 
@@ -497,12 +511,12 @@ export default function App() {
           { id: 'dashboard', label: 'Home', icon: BarChart3 },
           { id: 'logframe', label: 'Indicators', icon: TrendingUp },
           { id: 'reports', label: 'Reports', icon: FileText },
-          { id: 'entry', label: 'Collect', icon: ListCheck },
+          { id: 'license', label: 'License', icon: KeyRound },
           { id: 'more', label: 'More', icon: MoreHorizontal }
         ].map(item => {
           const Icon = item.icon;
           const selected = item.id === 'more'
-            ? showMobileMenu || ['builder', 'export', 'mobile', 'print'].includes(activeTab)
+            ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'print'].includes(activeTab)
             : activeTab === item.id;
 
           return (
@@ -530,6 +544,7 @@ export default function App() {
       {showMobileMenu && (
         <div className="mobile-more-menu print:hidden">
           {[
+            { id: 'entry', label: 'Collect data', icon: ListCheck },
             { id: 'builder', label: 'Form builder', icon: FileText },
             { id: 'export', label: 'Export data', icon: Download },
             { id: 'mobile', label: 'Mobile sync', icon: Smartphone },
@@ -946,6 +961,134 @@ function LogframeView({ project, getCalculatedActual, setProjects }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// LICENSE & ACTIVATION COMPONENT (SECURED AGAINST DEMO REUSE)
+function LicenseActivationView({ license, setLicense }) {
+  const [inputCode, setInputCode] = useState('');
+
+  const handleActivate = (e) => {
+    e.preventDefault();
+    const code = inputCode.trim().toUpperCase();
+    let newLicenseData = null;
+
+    if (code === 'DEMO-5DAYS') {
+      if (license.demoClaimed || license.code === 'DEMO-5DAYS') {
+        alert('❌ This workspace has already claimed the 5-day demo. Please upgrade to an Annual or Lifetime plan.');
+        return;
+      }
+      newLicenseData = {
+        code,
+        level: 'Level 1: 5-Day Demo',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'ANNUAL-2026') {
+      newLicenseData = {
+        code,
+        level: 'Level 2: One-Year Plan',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    } else if (code === 'LIFETIME-GMEL') {
+      newLicenseData = {
+        code,
+        level: 'Level 3: Pay-Once Lifetime License',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: null
+      };
+    } else {
+      alert('Invalid activation code. Try: DEMO-5DAYS, ANNUAL-2026, or LIFETIME-GMEL');
+      return;
+    }
+
+    setLicense(newLicenseData);
+    setInputCode('');
+    alert(`Activation successful! Tier: ${newLicenseData.level}`);
+  };
+
+  const isExpired = license.expiresAt && new Date() > new Date(license.expiresAt);
+  const daysRemaining = license.expiresAt ? Math.ceil((new Date(license.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) : 'Lifetime';
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <KeyRound className="h-6 w-6 text-indigo-600" /> System License &amp; Activation
+        </h2>
+        <p className="text-sm text-slate-500">Manage your subscription tier and system activation keys.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'DEMO-5DAYS' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+          <span className="text-xs font-bold uppercase text-indigo-600">Level 1</span>
+          <h3 className="text-base font-bold text-slate-900 mt-1">5-Day Demo</h3>
+          <p className="text-xs text-slate-600 mt-2">Trial code for testing features.</p>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: DEMO-5DAYS</div>
+        </div>
+
+        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'ANNUAL-2026' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+          <span className="text-xs font-bold uppercase text-emerald-600">Level 2</span>
+          <h3 className="text-base font-bold text-slate-900 mt-1">One-Year Plan</h3>
+          <p className="text-xs text-slate-600 mt-2">Full access for 365 days.</p>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: ANNUAL-2026</div>
+        </div>
+
+        <div className={`p-5 rounded-2xl border shadow-sm ${!isExpired && license.code === 'LIFETIME-GMEL' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-slate-200'}`}>
+          <span className="text-xs font-bold uppercase text-amber-600">Level 3</span>
+          <h3 className="text-base font-bold text-slate-900 mt-1">Pay-Once Lifetime</h3>
+          <p className="text-xs text-slate-600 mt-2">Permanent license, never expires.</p>
+          <div className="mt-4 pt-3 border-t font-mono text-xs font-bold text-slate-700">Code: LIFETIME-GMEL</div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+        <div className="flex items-center justify-between border-b pb-4">
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">Current Active License Status</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Key: <span className="font-mono font-bold text-indigo-700">{license.code || 'None'}</span></p>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${isExpired ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+            {isExpired ? <AlertTriangle className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+            {isExpired ? 'Expired' : 'Active'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <div className="bg-slate-50 p-4 rounded-xl border">
+            <p className="text-xs font-bold text-slate-500 uppercase">Tier Level</p>
+            <p className="font-bold text-slate-900 mt-1">{license.level}</p>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-xl border">
+            <p className="text-xs font-bold text-slate-500 uppercase">Validity / Remaining</p>
+            <p className="font-bold text-indigo-600 mt-1">
+              {license.expiresAt ? (isExpired ? 'Expired' : `${daysRemaining} Days Remaining`) : 'Permanent (Lifetime)'}
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleActivate} className="space-y-3 pt-2">
+          <label className="block text-xs font-bold text-slate-700">Enter Activation Code</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              required
+              placeholder="e.g. DEMO-5DAYS, ANNUAL-2026, LIFETIME-GMEL"
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              className="flex-1 border rounded-lg p-2.5 text-sm font-mono bg-white uppercase shadow-sm"
+            />
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm shadow">
+              Activate Key
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1532,7 +1675,7 @@ function ExportSuiteView({ onExportSubmissions, onExportLogframe, onExportBackup
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
           <div>
             <div className="bg-amber-50 p-3 rounded-xl w-fit mb-3 border border-amber-200"><FileCode className="h-6 w-6 text-amber-600" /></div>
-            <h3 className="text-2xl font-extrabold text-slate-900">Full System Backup</h3>
+            <h3 className="font-bold text-slate-900">Full System Backup</h3>
             <p className="text-xs text-slate-600 mt-1">Download JSON backup of all projects and data.</p>
           </div>
           <button onClick={onExportBackup} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-md">Download JSON</button>
