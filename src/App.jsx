@@ -393,12 +393,14 @@ export default function App() {
       </header>
 
       <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
-        {activeTab === 'dashboard' && (
-          <DashboardView 
-            project={currentProject} 
-            getCalculatedActual={getCalculatedActual} 
-            onOpenEditProject={() => {
-              setEditProj({
+       {activeTab === 'dashboard' && (
+  <DashboardView 
+    project={currentProject} 
+    getCalculatedActual={getCalculatedActual} 
+    setProjects={setProjects}  // <-- ADDED THIS PROP
+    onOpenEditProject={() => { ... }} 
+  />
+)}
                 name: currentProject.name,
                 code: currentProject.code,
                 donor: currentProject.donor,
@@ -822,9 +824,11 @@ function UserGuidelinesView() {
   );
 }
 
-function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) {
+function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) { // <-- ADDED setProjects HERE
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newExp, setNewExp] = useState({ title: '', amount: '', date: '' });
+  
+  // ... rest of your code ...
 
   const levels = [
     { name: 'Impact', color: '#b7791f' },
