@@ -40,12 +40,12 @@ import {
 // FIREBASE CLOUD CONFIGURATION
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDtzwOW94exkmt_JHthKInXU3NjdyVKoEs",
-  authDomain: "online-shop-dcbea.firebaseapp.com",
-  projectId: "online-shop-dcbea",
-  storageBucket: "online-shop-dcbea.firebasestorage.app",
-  messagingSenderId: "113310368595",
-  appId: "1:113310368595:web:54144e4989d1aaae63d7a6"
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
+  projectId: "YOUR_FIREBASE_PROJECT_ID",
+  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
+  appId: "YOUR_FIREBASE_APP_ID"
 };
 
 let db = null;
