@@ -826,7 +826,7 @@ function UserGuidelinesView() {
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
             System User Guidelines &amp; Documentation
           </h2>
-          <p className="text-base text-slate-600 mt-1">Official operational manual for the [GMEL System](url?id=5).</p>
+          <p className="text-base text-slate-600 mt-1">Official operational manual for the GMEL System.</p>
         </div>
         <div className="flex gap-2.5">
           <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-slate-800">
@@ -849,7 +849,7 @@ function UserGuidelinesView() {
             About the Founder &amp; System Background
           </h3>
           <p className="text-base text-slate-700">
-            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the [GMEL System](url?id=5), the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the GMEL System, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
         </div>
 
