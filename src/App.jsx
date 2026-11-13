@@ -788,136 +788,93 @@ function GISMapView({ project }) {
 }
 
 function UserGuidelinesView() {
-  const downloadPDFGuidelines = `GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: OFFICIAL MANUAL
-Founder & Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania
-Qualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation
-Experience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.
+  const downloadPDFGuidelines = 
+    "GABRIEL MONITORING, EVALUATION AND LEARNING (GMEL) SYSTEM: OFFICIAL MANUAL\n" +
+    "Founder & Lead Architect: Gabriel Godiel Mashambo · EnrichData Tanzania\n" +
+    "Qualifications: Bachelor's in Statistics and Mathematics, Master's in Monitoring and Evaluation\n" +
+    "Experience: Over 10 years in M&E, project initiation, planning, implementation, capacity building, DQAs, analysis, learning, and reporting in Tanzania.\n\n" +
+    "1. System Navigation & Header Controls\n" +
+    "Online / Offline Status Indicator: Displays whether connected to Firebase cloud servers (green badge) or operating in offline-first cached mode (amber badge).\n" +
+    "Role-Based Access Control (RBAC): Toggle between Admin, M&E Officer, and Enumerator. Restricted roles require verification via secure PIN.\n" +
+    "Project Picker Dropdown: Switches active workspace across multiple donor-funded projects.\n\n" +
+    "2. Core Modules & Feature Guidelines\n" +
+    "- Dashboard & Visuals: Executive oversight, project health status, and budget utilization tracking.\n" +
+    "- Logical Framework Matrix: Indicator management with demographic disaggregation (General, Male, Female, Total) and automated form mapping.\n" +
+    "- GIS Map Intelligence: Interactive Leaflet map plotting exact GPS coordinates captured across survey submissions.\n" +
+    "- Custom Reports: Donor-ready performance summaries and scorecard tables with PDF print options.\n" +
+    "- Form Builder: Survey creation tool supporting text, numbers, dates, dropdowns, multi-select, GPS, photos, notes, ratings, and Skip Logic.\n" +
+    "- Data Submission: Offline-first field data entry with local caching and automated Firebase sync.\n" +
+    "- Export Suite: Export raw submissions, logframes, and system backups to CSV or JSON.\n" +
+    "- Printable Paper Forms: Clean paper-ready survey layouts for offline data collection.\n" +
+    "- Mobile Sync Hub: Real-time status of local caching and cloud synchronization.\n" +
+    "- License Hub: Manage subscription tiers (5-Day Demo, One-Year Plan, Lifetime License).\n\n" +
+    "Contacts: Email: info.enrichdata@gmail.com | Mob: +255758216364";
 
-1. System Navigation & Header Controls
-The persistent top header serves as the main command center for project management, device status, and role authentication.
+  const handleDownload = () => {
+    const blob = new Blob([downloadPDFGuidelines], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Gabriel_GMEL_System_Manual.txt';
+    a.click();
+  };
 
-Online / Offline Status Indicator: Displays whether the app is currently connected to Firebase cloud servers (green badge) or operating in offline-first cached mode (amber badge) for remote field work across Tanzania.
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 text-base">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+            System User Guidelines &amp; Documentation
+          </h2>
+          <p className="text-base text-slate-600 mt-1">Official operational manual for the [GMEL System](url?id=5).</p>
+        </div>
+        <div className="flex gap-2.5">
+          <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-slate-800">
+            Print Guide
+          </button>
+          <button type="button" onClick={handleDownload} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-indigo-700">
+            Download Guide
+          </button>
+        </div>
+      </div>
 
-Role-Based Access Control (RBAC) Switcher: Allows toggling between Role: Admin, Role: M&E Officer, and Role: Enumerator. Switching to restricted roles requires verification via the secure PIN (Enter Your Password).
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 text-slate-800 text-base leading-relaxed">
+        <div className="border-b pb-6">
+          <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
+          <p className="text-indigo-600 text-sm font-extrabold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo &middot; EnrichData Tanzania</p>
+        </div>
 
-Project Picker Dropdown: Instantly switches the active workspace context across multiple donor-funded projects (e.g., Sustainable Water Support (SWS-001)).
+        <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
+          <h3 className="text-base font-black text-indigo-900 uppercase">
+            About the Founder &amp; System Background
+          </h3>
+          <p className="text-base text-slate-700">
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the [GMEL System](url?id=5), the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+          </p>
+        </div>
 
-System Action Buttons:
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">1. Role-Based Access Control (RBAC) &amp; Security</h3>
+            <p className="text-slate-700">The platform enforces strict security across three user tiers protected by a verified security PIN (<code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-mono">GMEL2026!</code>):</p>
+            <ul className="list-disc pl-6 space-y-1 text-slate-700 font-bold">
+              <li>Administrator: Full project creation, indicator configuration, form building, and financial expense tracking.</li>
+              <li>M&amp;E Officer: Logframe monitoring, GIS map analysis, and scorecard reviews.</li>
+              <li>Enumerator: Restricted exclusively to field survey data collection.</li>
+            </ul>
+          </div>
 
-Sync: Opens the mobile sync and offline status hub.
-
-Guide: Opens this documentation and operational manual.
-
-License: Manages subscription tiers and activation keys.
-
-New Project: Opens a modal to initialize a fresh M&E project with custom codes and budgets.
-
-2. Core Modules & Feature Guidelines
-A. Dashboard & Visuals (Dashboard & Visuals)
-Purpose: Provides executive oversight and real-time visual tracking of project health and financial utilization.
-
-Features:
-
-Summary Cards: Quick metrics for Project Code, Donor Funding, Active Indicators, and Total Submissions.
-
-Project Health Status: Dynamically calculates overall performance (On Track 🚀, Needs Attention ⚠️, Target Achieved ⭐) based on average indicator achievement percentages.
-
-Budget Utilization Ratio: Tracks actual financial expenditures against allocated donor funding. Administrators can click + Add Expense to record new costs with titles, amounts, and dates.
-
-Indicator Level Breakdown: Interactive visual progress bars and charts disaggregated by Impact, Outcome, Output, and Activity levels.
-
-B. Logical Framework (Logframe) Matrix (Logframe Matrix)
-Purpose: The core structural framework for managing project indicators and tracking development results.
-
-Features:
-
-Demographic Disaggregation: Tracks Baseline, Target, and Actual progress disaggregated across General, Male, Female, and Total metrics.
-
-Automated Data Mapping: Links logframe indicators directly to specific questions inside custom survey forms. Choose automated calculation types (SUM, AVG, COUNT, MAX, or PERCENTAGE (%)) to update actual values automatically when field surveys are submitted.
-
-Indicator Management: Add, edit, or delete indicators across hierarchy levels (Impact, Outcome, Output, Activity).
-
-C. Geospatial GIS Map Intelligence (GIS Map View)
-Purpose: Maps field data geographically using interactive Leaflet map integration.
-
-Features:
-
-Automatically scans all submitted survey data for captured GPS coordinates (Latitude, Longitude).
-
-Plots interactive map markers across target regions in Tanzania.
-
-Clicking any pin opens a popup displaying the submission reference ID, timestamp, and exact coordinates.
-
-D. Custom Reports & Executive Scorecard (Custom Reports)
-Purpose: Generates donor-ready performance summaries and scorecard tables.
-
-Features:
-
-Displays a clean, printable executive summary table comparing baseline, target, and actual performance percentages for every indicator.
-
-Includes an Export / Print PDF Report button to format the page cleanly for stakeholder distribution.
-
-E. Advanced Form Generator & Skip Logic (Form Builder)
-Purpose: Builds custom mobile-friendly data collection instruments.
-
-Features:
-
-Question Types: Supports Short Text, Numeric Quantities, Date Pickers, Dropdown Selects, Multi-Select Checkboxes, GPS Location Capture, Photo Uploads, Long Notes, and 1–5 Star Ratings.
-
-Mandatory Toggles: Mark individual questions as required (*).
-
-Skip Logic (Conditional Display): Configure questions to appear dynamically only when a specific preceding dropdown or multi-select question matches a trigger value.
-
-Form Management: Publish new surveys, edit existing form titles/questions, or delete obsolete forms.
-
-F. Field Data Entry & Offline-First Caching (Data Submission)
-Purpose: The primary interface used by field enumerators to capture survey responses.
-
-Features:
-
-Offline-First Caching: Submissions are stored locally in browser storage when offline and automatically synced to Firebase Firestore when connectivity returns.
-
-GPS Capture Integration: Utilizes device hardware via Capacitor Geolocation to lock in precise coordinates.
-
-Submission Logs Table: Reviews all historical survey records, inspects disaggregated responses, and allows clearing or deleting individual logs.
-
-G. Data Export Suite (Export Suite)
-Purpose: Data portability and backup management.
-
-Features:
-
-Raw Submissions CSV: Export all survey response data for spreadsheet analysis.
-
-Logframe CSV: Export indicator frameworks and targets.
-
-System JSON Backup: Download a complete backup of all projects, forms, submissions, and license keys.
-
-H. Printable Paper Survey Forms (Print Forms)
-Purpose: Supports hybrid data collection workflows where digital devices are unavailable.
-
-Features:
-
-Generates clean, paper-ready survey sheets with form titles, descriptions, question blocks, and response write-in areas optimized for physical printing.
-
-I. Mobile App Sync & Offline Hub (Sync)
-Purpose: Monitors local caching status and cloud synchronization health.
-
-Features:
-
-Real-time indicator displaying whether the workspace is connected to Firebase or running locally.
-
-J. System User Manual & Guidelines (Guide)
-Purpose: Built-in operational manual for onboarding team members, M&E officers, and donors. Includes options to print or download the documentation as a text file.
-
-K. License & Activation Hub (License)
-Purpose: Manages subscription tiers and software activation keys.
-
-Features:
-
-Supports three licensing tiers: Level 1 (5-Day Demo), Level 2 (One-Year Plan), and Level 3 (Pay-Once Lifetime License).
-
-L. Contacts 
-In case of any failure or require more details, kindly reach us through - Email: info.enrichdata@gmail.com; Mob: +255758216364
+          <div className="space-y-2">
+            <h3 className="font-extrabold text-xl text-indigo-700">2. Dashboard &amp; Financial Budget Tracking</h3>
+            <p className="text-slate-700">
+              The home dashboard calculates overall project health ratings and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
   const handleDownload = () => {
     const blob = new Blob([downloadPDFGuidelines], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
