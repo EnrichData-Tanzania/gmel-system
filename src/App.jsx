@@ -224,7 +224,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-base text-slate-300">Loading [GMEL System](url?id=5) Workspace...</p>
+          <p className="text-base text-slate-300">Loading GMEL System Workspace...</p>
         </div>
       </div>
     );
