@@ -822,16 +822,16 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
         <div>
           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-            <BookOpen className="h-7 w-7 text-indigo-600" /> System User Guidelines &amp; Documentation
+            System User Guidelines &amp; Documentation
           </h2>
           <p className="text-base text-slate-600 mt-1">Official operational manual for the [GMEL System](url?id=5).</p>
         </div>
         <div className="flex gap-2.5">
-          <button onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-slate-800">
-            <Printer className="h-5 w-5" /> Print Guide
+          <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-slate-800">
+            Print Guide
           </button>
-          <button onClick={handleDownload} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
-            <Download className="h-5 w-5" /> Download Guide
+          <button type="button" onClick={handleDownload} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-indigo-700">
+            Download Guide
           </button>
         </div>
       </div>
@@ -843,11 +843,11 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
         </div>
 
         <div className="bg-indigo-50/80 p-6 rounded-2xl border border-indigo-200 space-y-3">
-          <h3 className="text-base font-black text-indigo-900 uppercase flex items-center gap-2.5">
-            <GraduationCap className="h-6 w-6 text-indigo-600" /> About the Founder &amp; System Background
+          <h3 className="text-base font-black text-indigo-900 uppercase">
+            About the Founder &amp; System Background
           </h3>
           <p className="text-base text-slate-700">
-            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the <a href="url?id=5" className="text-indigo-600 underline font-bold">GMEL System</a>, the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
+            In this architecture, the letter <strong>G</strong> stands for <strong>Gabriel</strong> (Gabriel Godiel Mashambo), founder and owner. Designated as the [GMEL System](url?id=5), the platform incorporates over 10 years of professional expertise in development programming and M&amp;E consultancy across Tanzania.
           </p>
         </div>
 
@@ -865,21 +865,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
           <div className="space-y-2">
             <h3 className="font-extrabold text-xl text-indigo-700">2. Dashboard &amp; Financial Budget Tracking</h3>
             <p className="text-slate-700">
-              The home dashboard calculates overall project health ratings (On Track, Needs Attention, Target Achieved) and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-extrabold text-xl text-indigo-700">3. Logframe &amp; Automated Data Mapping</h3>
-            <p className="text-slate-700">
-              Manage hierarchical indicators across Impact, Outcome, Output, and Activity levels with full demographic disaggregation (General, Male, Female, Total) linked directly to custom survey form fields.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="font-extrabold text-xl text-indigo-700">4. GIS Mapping &amp; Offline-First Sync</h3>
-            <p className="text-slate-700">
-              Capture GPS coordinates in remote field locations across Tanzania. Data is cached locally and automatically synchronized with Firebase Firestore when network connection is restored.
+              The home dashboard calculates overall project health ratings and tracks real expenditure ratios against donor funding using the integrated <strong>+ Add Expense</strong> module.
             </p>
           </div>
         </div>
