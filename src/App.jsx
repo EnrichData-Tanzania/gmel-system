@@ -115,6 +115,7 @@ const initialProjects = [
     ]
   }
 ];
+
 export default function App() {
   const [projects, setProjects] = useState(initialProjects);
   const [license, setLicense] = useState({
@@ -223,7 +224,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 flex items-center justify-center font-sans text-white text-base">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-          <p className="text-base text-slate-300">Loading GMEL System Workspace...</p>
+          <p className="text-base text-slate-300">Loading [GMEL System](url?id=5) Workspace...</p>
         </div>
       </div>
     );
@@ -256,7 +257,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                GMEL System
+                [GMEL System](url?id=5)
               </h1>
             </div>
           </div>
@@ -268,29 +269,29 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
-  <Shield className="h-4 w-4 text-indigo-400" />
-  <select 
-    value={userRole} 
-    onChange={(e) => {
-      const selected = e.target.value;
-      if (selected === 'Administrator') {
-        const pin = prompt('Enter Admin Password / PIN:');
-        if (pin === 'GMEL2026Admin!') { // Replace with a secure secret or Firebase auth check
-          setUserRole('Administrator');
-        } else {
-          alert('Incorrect Admin PIN!');
-        }
-      } else {
-        setUserRole(selected);
-      }
-    }}
-    className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
-  >
-    <option value="Administrator" className="bg-slate-800">Role: Admin</option>
-    <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
-    <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
-  </select>
-</div>
+              <Shield className="h-4 w-4 text-indigo-400" />
+              <select 
+                value={userRole} 
+                onChange={(e) => {
+                  const selected = e.target.value;
+                  if (selected === 'Administrator' || selected === 'M&E Officer') {
+                    const pin = prompt(`Enter secure PIN to switch to ${selected}:`);
+                    if (pin === 'GMEL2026!') {
+                      setUserRole(selected);
+                    } else {
+                      alert('Incorrect security PIN! Access denied.');
+                    }
+                  } else {
+                    setUserRole(selected);
+                  }
+                }}
+                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              >
+                <option value="Administrator" className="bg-slate-800">Role: Admin</option>
+                <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
+                <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
+              </select>
+            </div>
 
             <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
               <Building2 className="h-5 w-5 text-indigo-400" />
@@ -405,14 +406,13 @@ export default function App() {
       </header>
 
       <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
-      {activeTab === 'dashboard' && (
-  <DashboardView 
-    project={currentProject} 
-    getCalculatedActual={getCalculatedActual} 
-    setProjects={setProjects}
-    onOpenEditProject={() => setIsEditingProject(true)}  // <-- FIXED: Use actual handler
-  />
-)}
+        {activeTab === 'dashboard' && (
+          <DashboardView 
+            project={currentProject} 
+            getCalculatedActual={getCalculatedActual} 
+            setProjects={setProjects}
+            onOpenEditProject={() => {
+              setEditProj({
                 name: currentProject.name,
                 code: currentProject.code,
                 donor: currentProject.donor,
@@ -873,6 +873,7 @@ Experience: Over 10 years in M&E, project initiation, planning, implementation, 
     </div>
   );
 }
+
 function DashboardView({ project, getCalculatedActual, onOpenEditProject, setProjects }) {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newExp, setNewExp] = useState({ title: '', amount: '', date: '' });
@@ -1133,6 +1134,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
     </div>
   );
 }
+
 function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState(null);
