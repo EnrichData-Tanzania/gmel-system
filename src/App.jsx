@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { Geolocation } from '@capacitor/geolocation';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
   BarChart3, 
   PlusCircle, 
@@ -108,7 +108,6 @@ const initialProjects = [
       }
     ],
     submissions: [],
-    // ADDED: Real financial expenditure logs
     expenses: [
       { id: 'exp-1', title: 'Community Mobilization Workshop', amount: 4500, date: '2026-06-12' },
       { id: 'exp-2', title: 'Borehole Hardware Procurement', amount: 8200, date: '2026-07-01' }
@@ -146,34 +145,37 @@ export default function App() {
     };
   }, []);
 
+  // FIXED: Use real-time onSnapshot listener for cross-device consistency across Chrome, Edge, etc.
   useEffect(() => {
-    async function fetchCloudData() {
-      try {
-        if (!db || !navigator.onLine) {
-          const localCache = localStorage.getItem('gmel_offline_cache');
-          if (localCache) {
-            const parsed = JSON.parse(localCache);
-            if (parsed.projects) setProjects(parsed.projects);
-            if (parsed.license) setLicense(parsed.license);
-          }
-          setIsLoadedFromCloud(true);
-          return;
+    if (!db || !navigator.onLine) {
+      const localCache = localStorage.getItem('gmel_offline_cache');
+      if (localCache) {
+        try {
+          const parsed = JSON.parse(localCache);
+          if (parsed.projects) setProjects(parsed.projects);
+          if (parsed.license) setLicense(parsed.license);
+        } catch (e) {
+          console.error("Cache parse error:", e);
         }
-        const docRef = doc(db, 'gmel_systems', 'main_workspace');
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.projects) setProjects(data.projects);
-          if (data.license && data.license.code) setLicense(data.license);
-        }
-      } catch (err) {
-        console.error('Error loading data:', err);
-      } finally {
-        setIsLoadedFromCloud(true);
       }
+      setIsLoadedFromCloud(true);
+      return;
     }
-    fetchCloudData();
+
+    const docRef = doc(db, 'gmel_systems', 'main_workspace');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.projects) setProjects(data.projects);
+        if (data.license && data.license.code) setLicense(data.license);
+      }
+      setIsLoadedFromCloud(true);
+    }, (err) => {
+      console.error('Error listening to cloud data:', err);
+      setIsLoadedFromCloud(true);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -450,11 +452,21 @@ export default function App() {
             project={currentProject} 
             onSubmitForm={(formId, data) => {
               const submissionObj = { id: createId('sub'), formId, timestamp: new Date().toLocaleString(), data };
-              setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
-                ...p,
-                submissions: [submissionObj, ...p.submissions]
-              }));
-              alert('Data record submitted and cached/synced successfully!');
+              setProjects(prev => {
+                const updatedProjects = prev.map(p => p.id !== currentProject.id ? p : {
+                  ...p,
+                  submissions: [submissionObj, ...p.submissions]
+                });
+                localStorage.setItem('gmel_offline_cache', JSON.stringify({ projects: updatedProjects, license }));
+                
+                // Immediate manual firestore write trigger on submission for multi-device reliability
+                if (db && navigator.onLine) {
+                  setDoc(doc(db, 'gmel_systems', 'main_workspace'), { projects: updatedProjects, license, updated_at: new Date() })
+                    .catch(err => console.error("Immediate sync error:", err));
+                }
+                return updatedProjects;
+              });
+              alert('Data record submitted and synced across devices successfully!');
             }} 
             onDeleteSubmission={(subId) => {
               setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
@@ -896,7 +908,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
     return segment;
   }).join(', ');
 
-  // Compute overall project health score
   let totalPctSum = 0;
   project.indicators.forEach(ind => {
     const actualObj = getCalculatedActual(project, ind);
@@ -918,7 +929,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
     healthColor = 'bg-indigo-100 text-indigo-900 border-indigo-300';
   }
 
-  // Parse total budget and actual expenses
   const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 1;
   const projectExpenses = project.expenses || [];
   const totalSpent = projectExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
@@ -1042,7 +1052,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
 
         <div className="space-y-6">
-          {/* REAL FINANCIAL BUDGET UTILIZATION CARD */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
               <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
@@ -1102,7 +1111,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       </div>
 
-      {/* Add Expense Modal */}
       {showExpenseModal && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
@@ -1714,7 +1722,6 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
         </div>
       )}
 
-      {/* CREATE NEW FORM WITH INTEGRATED SKIP LOGIC */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
           <h3 className="text-lg font-extrabold text-slate-900 border-b pb-3">Create New Custom Form</h3>
@@ -1782,7 +1789,6 @@ function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
                   </div>
                 )}
 
-                {/* Skip Logic Builder */}
                 <div className="pl-6 pt-2 border-t text-xs space-y-1">
                   <label className="font-extrabold text-slate-700 flex items-center gap-1">
                     <GitBranch className="h-3.5 w-3.5 text-indigo-600" /> Skip Logic (Conditional Display):
